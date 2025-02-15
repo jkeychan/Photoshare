@@ -1,0 +1,19 @@
+[Unit]
+Description=PhotoShare Gunicorn Application
+After=network.target
+
+[Service]
+User=j
+Group=j
+EnvironmentFile=/etc/systemd/system/env/photoshare
+WorkingDirectory=/mnt/web/photoshare
+ExecStart=/opt/photoshare_venv/bin/gunicorn app:app --bind 127.0.0.1:5000 --workers 4 --worker-class gevent --access-logfile /opt/photoshare_logs/access_log.txt --error-logfile /opt/photoshare_logs/error_log.txt --timeout 100 --keep-alive 4
+Restart=always
+Environment="PATH=/opt/photoshare_venv/bin"
+KillMode=mixed
+TimeoutStopSec=10
+RestartSec=5
+
+
+[Install]
+WantedBy=multi-user.target

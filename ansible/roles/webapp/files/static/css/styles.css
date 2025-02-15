@@ -1,0 +1,247 @@
+/* Global styles */
+:root {
+  --green: #1f865f;
+  --red: #e65d4b;
+  --orange: #ec8b34;
+  --deep-blue: #014d7a;
+  --sky-blue: #1b93c0;
+
+  --main-bg-color: #f2f2f2;
+  --main-text-color: #333;
+  --highlight-color: var(--green);
+  --light-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --input-border: 1px solid #ccc;
+
+  /* Additional Colors */
+  --color1: var(--green);
+  --color2: var(--red);
+  --color3: var(--orange);
+  --color4: var(--deep-blue);
+  --color5: var(--sky-blue);
+}
+
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  padding-top: 10vh;
+  background-color: var(--main-bg-color);
+}
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  padding-top: 10vh;
+  background-color: var(--main-bg-color);
+}
+
+h1 {
+  color: var(--main-text-color);
+  margin-bottom: 2vh;
+  text-align: center;
+}
+
+.logo-container {
+  text-align: center; /* Center the content (logo) inside this container */
+  padding: 20px 0; /* Provide some vertical padding */
+}
+
+.logo {
+  max-width: 250px; /* Adjust this value to your preferred size */
+  height: auto; /* Maintain the aspect ratio */
+  display: inline-block; /* Allows the logo to respect text-align from its parent */
+}
+
+
+.grid-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  grid-gap: 1vh;
+  margin: 0 auto;
+  width: 80vw;
+}
+
+.grid-item {
+  background-color: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 10px;
+  border-radius: 4px;
+  text-align: center;  /* Centers the content horizontally */
+  list-style-type: none;
+}
+
+.grid-item img {
+  display: block;      /* Block display will cause the image to take up full width of its container */
+  margin: 0 auto;      /* This will center the image horizontally */
+  max-width: 100%;
+  max-height: 200px;
+  cursor: pointer;
+}
+
+.grid-item span {
+  display: block;      /* Force the span to act like a block and occupy its own line */
+  margin-top: 5px;     /* Adds a little space between the icon and the folder name */
+}
+
+.video-wrapper {
+    text-align: center; /* Center child elements */
+}
+
+.video-download-link {
+    display: block; /* Ensure the link is a block-level element so it takes the full width */
+    margin-top: 10px; /* Add a little space above the download link */
+}
+
+
+/* Pagination links */
+.pagination-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  /* Changed from center to space-between */
+  margin-bottom: 10px;
+}
+
+.pagination a {
+  color: #007bff;
+  text-decoration: none;
+  padding: 6px 12px;
+  border: 1px solid #007bff;
+  border-radius: 4px;
+  margin-right: 20px;
+  /* Increase this value to add more space on the right of each link */
+  margin-left: 20px;
+  /* Increase this value to add more space on the left of each link */
+}
+
+.pagination span {
+  display: inline-block;
+  margin-right: 30px;
+  /* Increase this value to add more space on the right of the page number */
+  margin-left: 30px;
+  /* Increase this value to add more space on the left of the page number */
+}
+
+.pagination a:hover {
+  background-color: var(--red);
+  color: #fff;
+}
+
+.pagination .active {
+  background-color: var(--orange);
+  color: #fff;
+}
+
+/* Login form */
+.login-form {
+  max-width: 300px;
+  margin: 0 auto;
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #fff;
+}
+
+.login-form input[type="password"] {
+  width: 92%;
+  padding: 10px;
+  margin-bottom: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.login-form input[type="submit"] {
+  background-color: var(--red);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.login-form p.error {
+  color: red;
+  font-size: 14px;
+}
+
+/* Top navigation bar */
+.topnav {
+    background-color: var(--color4);  /* Using the fourth color for the navbar */
+    overflow: hidden;
+    position: fixed;
+    top: 0;
+    width: 100%;
+    display: flex;   /* Add flex display */
+    justify-content: space-between;   /* Push items to the far ends */
+}
+
+.topnav a {
+    color: var(--color1);  /* Using the first color for the text */
+    text-align: center;
+    padding: 14px 16px;
+    text-decoration: none;
+    transition: background-color 0.3s; /* Added for smooth background color transition */
+}
+
+/* Specific styling for the Logout button */
+.topnav a[href="{{ url_for('logout') }}"] {
+    background-color: #007BFF;  /* Blue background color (change as needed) */
+    color: white;  /* White text color */
+    border-radius: 4px;  /* Rounded corners */
+    font-weight: bold;  /* Bold font */
+    margin-left: auto;  /* Push the logout button to the right side */
+}
+
+.topnav a[href="{{ url_for('logout') }}"]:hover {
+    background-color: #0056b3;  /* Darker blue on hover */
+}
+
+.topnav a[href="{{ url_for('logout') }}"]:active {
+    background-color: #003580;  /* Even darker blue on active (when pressed) */
+}
+
+/* Original hover styling for other topnav links */
+.topnav a:not([href="{{ url_for('logout') }}"]):hover {
+    background-color: var(--color3); /* Using the third color for hover state */
+    color: #fff;
+}
+
+.nav-logo img {
+    height: 32px;  /* Adjust this value to desired size */
+    width: auto;
+    vertical-align: middle;
+    margin-right: 10px; /* Spacing between logo and other items */
+}
+
+
+/* Mobile styles */
+@media (max-width: 600px) {
+  .grid-container {
+    grid-template-columns: repeat(auto-fill, minmax(30vw, 1fr));
+  }
+
+  .grid-item img {
+    max-width: 100%;
+    max-height: 500px;
+    cursor: pointer;
+  }
+
+  .pagination a,
+  .pagination span {
+    font-size: smaller;
+    /* Decrease font size */
+    padding: 3px 6px;
+    /* Decrease padding */
+    margin-right: 5px;
+    /* Decrease right margin */
+    margin-left: 5px;
+    /* Decrease left margin */
+  }
+
+}

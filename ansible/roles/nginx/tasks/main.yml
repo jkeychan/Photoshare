@@ -1,0 +1,210 @@
+---
+- name: Install required dependencies for Nginx
+  ansible.builtin.apt:
+    name:
+      - libpcre2-dev
+      - zlib1g-dev
+      - libssl-dev
+      - libgd-dev
+      - libgd3
+      - libgeoip-dev
+      - libgeoip1
+      - pcre2-utils
+      - zlib1g-dev
+      - python3-certbot-nginx
+      - certbot
+    state: present
+  become: true
+
+- name: Define Nginx version
+  ansible.builtin.set_fact:
+    nginx_version: "1.26.1"
+
+- name: Check if nginx exists
+  ansible.builtin.command: "/usr/sbin/nginx -v"
+  register: nginx_version_check
+  ignore_errors: true
+  changed_when: false
+
+- name: Nginx version check debug
+  ansible.builtin.debug:
+    msg: "Installed Nginx version: {{ nginx_version_check.stderr }}"
+  when: nginx_version_check.rc == 0
+
+- name: Set nginx version check result
+  ansible.builtin.set_fact:
+    nginx_version_check_result: "{{ nginx_version_check.rc != 0 or ('nginx/' + nginx_version) not in nginx_version_check.stderr }}"
+
+- name: Download nginx source with curl
+  ansible.builtin.command:
+    cmd: curl -L -o /tmp/nginx-{{ nginx_version }}.tar.gz https://nginx.org/download/nginx-{{ nginx_version }}.tar.gz
+  args:
+    creates: "/tmp/nginx-{{ nginx_version }}.tar.gz"
+
+- name: Ensure /tmp/nginx directory exists
+  ansible.builtin.file:
+    path: /tmp/nginx
+    state: directory
+    mode: "0755"
+  when: nginx_version_check_result
+
+- name: Extract nginx source
+  ansible.builtin.unarchive:
+    src: /tmp/nginx-{{ nginx_version }}.tar.gz
+    dest: /tmp
+    remote_src: true
+  when: nginx_version_check_result
+
+- name: Compile and install nginx [THIS WILL ALSO TAKE SOME TIME]
+  become: true
+  when: nginx_version_check_result
+  block:
+    - name: Configure nginx
+      ansible.builtin.command:
+        cmd: >
+          ./configure --prefix=/etc/nginx --sbin-path=/usr/sbin/nginx
+          --conf-path=/etc/nginx/nginx.conf
+          --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log
+          --with-threads --with-stream --with-http_v2_module --with-file-aio
+          --with-http_ssl_module --with-http_realip_module --with-http_addition_module
+          --with-http_image_filter_module --with-http_geoip_module --with-http_sub_module
+          --with-http_flv_module --with-http_mp4_module --with-http_gunzip_module
+          --with-http_random_index_module --with-http_secure_link_module
+          --with-http_degradation_module --with-pcre --with-pcre-jit
+        chdir: /tmp/nginx-{{ nginx_version }}
+      changed_when: true
+      no_log: true
+    - name: Make nginx
+      ansible.builtin.command:
+        cmd: make
+        chdir: /tmp/nginx-{{ nginx_version }}
+      changed_when: true
+      no_log: true
+    - name: Install nginx
+      ansible.builtin.command:
+        cmd: make install
+        chdir: /tmp/nginx-{{ nginx_version }}
+      changed_when: true
+
+- name: Ensure nginx group exists
+  ansible.builtin.group:
+    name: nginx
+    system: true
+  become: true
+
+- name: Ensure nginx user exists
+  ansible.builtin.user:
+    name: nginx
+    system: true
+  become: true
+
+- name: Ensure /run/nginx directory exists
+  ansible.builtin.file:
+    path: /run/nginx
+    state: directory
+    mode: "0755"
+    owner: nginx
+    group: nginx
+
+- name: Create systemd service file for nginx
+  ansible.builtin.copy:
+    content: |
+      [Unit]
+      Description=A high performance web server and a reverse proxy server
+      Documentation=man:nginx(8)
+      After=network.target
+
+      [Service]
+      Type=forking
+      ExecStartPre=/usr/sbin/nginx -t -q -g 'daemon on; master_process on;'
+      ExecStart=/usr/sbin/nginx -g 'daemon on; master_process on;'
+      ExecReload=/usr/sbin/nginx -g 'daemon on; master_process on;' -s reload --pidfile /run/nginx/nginx.pid
+      ExecStop=-/sbin/start-stop-daemon --quiet --stop --retry QUIT/5
+      TimeoutStopSec=5
+      KillMode=mixed
+
+      [Install]
+      WantedBy=multi-user.target
+    dest: /etc/systemd/system/nginx.service
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+
+- name: Ensure necessary nginx directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - /etc/nginx/conf.d
+    - /etc/nginx/snippets
+  become: true
+
+- name: Remove any existing configurations from /etc/nginx/conf.d
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  with_fileglob:
+    - /etc/nginx/conf.d/*.conf
+  become: true
+
+- name: Copy blockuseragents rules for nginx
+  ansible.builtin.copy:
+    src: /home/dev/Ansible/photoshare/ansible/roles/nginx/files/blockuseragents.rules
+    dest: /etc/nginx/blockuseragents.rules
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+
+- name: Copy nginx main configuration
+  ansible.builtin.copy:
+    src: /home/dev/Ansible/photoshare/ansible/roles/nginx/files/nginx.conf
+    dest: /etc/nginx/nginx.conf
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+
+- name: Check if SSL certificate exists
+  ansible.builtin.stat:
+    path: "/etc/letsencrypt/live/{{ rdns_name }}/fullchain.pem"
+  register: ssl_cert
+
+- name: Copy photoshare nginx configuration (post-SSL)
+  ansible.builtin.template:
+    src: /home/dev/Ansible/photoshare/ansible/roles/nginx/files/photoshare-nginx.conf.j2
+    dest: /etc/nginx/conf.d/photoshare.conf
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  when: ssl_cert.stat.exists
+
+- name: Template ssl-params configuration for nginx
+  ansible.builtin.template:
+    src: /home/dev/Ansible/photoshare/ansible/roles/nginx/files/ssl-params.conf.j2
+    dest: /etc/nginx/snippets/ssl-params.conf
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+
+- name: Copy mime.types to /etc/nginx
+  ansible.builtin.copy:
+    src: /tmp/nginx-{{ nginx_version }}/conf/mime.types
+    dest: /etc/nginx/mime.types
+    owner: root
+    group: root
+    mode: "0644"
+    remote_src: true
+  become: true
+
+- name: Ensure nginx is enabled and running
+  ansible.builtin.service:
+    name: nginx
+    enabled: true
+    state: started
+  become: true
+  no_log: true
