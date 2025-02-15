@@ -29,7 +29,6 @@ Nginx acts as a shield in front of your application, handling incoming traffic a
 
 The provided Docker Compose script automates the deployment process. It sets up the Flask application alongside the Nginx reverse proxy, ensuring they work seamlessly together.
 
-The Docker Compose setup also allows you to mount your media directory from a local drive, ensuring that all your media remains under your control.
 
 ## Setup & Configuration
 
