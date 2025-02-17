@@ -77,8 +77,8 @@
     - nginx
     - webapp
 
-  post_tasks:
-    - name: Add user 'j' to the nginx group
-      ansible.builtin.user:
-        name: j
-        groups: nginx
+ # post_tasks:
+ #   - name: Add user 'j' to the nginx group
+ #     ansible.builtin.user:
+ #       name: j
+ #       groups: nginx
