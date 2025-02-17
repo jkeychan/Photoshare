@@ -19,6 +19,7 @@
     /usr/bin/env python3 /opt/photoshare_venv/generate_secrets.py "{{ admin_password }}"
   register: secret
   no_log: true
+  changed_when: false
 
 - name: Store generated secrets in Ansible facts
   ansible.builtin.set_fact:
@@ -36,7 +37,7 @@
 
 - name: Fill the template with secrets
   ansible.builtin.template:
-    src: roles/common/templates/photoshare.j2
+    src: "{{ role_path }}/templates/photoshare.j2"
     dest: /etc/systemd/system/env/photoshare
     owner: root
     group: root
@@ -46,7 +47,7 @@
   ansible.builtin.copy:
     src: "{{ role_path }}/files/photoshare.service"
     dest: /etc/systemd/system/photoshare.service
-    mode: "0755"
+    mode: "0644"
 
 - name: Reload systemd daemon
   ansible.builtin.systemd:
@@ -69,20 +70,20 @@
     group: nginx
     mode: "0644"
 
-- name: Gather stats for the photoshare_logs directory
-  ansible.builtin.stat:
+- name: Ensure the photoshare_logs directory exists
+  ansible.builtin.file:
     path: /opt/photoshare_logs
-  register: photoshare_logs_stat
+    state: directory
+    mode: "0775"
+  become: true
 
-- name: Change ownership and permissions of the photoshare_logs directory if necessary
+- name: Ensure correct ownership for photoshare_logs directory
   ansible.builtin.file:
     path: /opt/photoshare_logs
     owner: j
     group: j
     mode: "0775"
     recurse: true
-    state: directory
-  when: not photoshare_logs_stat.stat.exists
   become: true
 
 - name: Enable and start photoshare service
