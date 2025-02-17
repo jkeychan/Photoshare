@@ -86,17 +86,17 @@
         chdir: /tmp/nginx-{{ nginx_version }}
       changed_when: true
 
-- name: Ensure nginx group exists
-  ansible.builtin.group:
-    name: nginx
-    system: true
-  become: true
+#- name: Ensure nginx group exists
+#  ansible.builtin.group:
+#    name: nginx
+#    system: true
+# become: true
 
-- name: Ensure nginx user exists
-  ansible.builtin.user:
-    name: nginx
-    system: true
-  become: true
+# - name: Ensure nginx user exists
+#  ansible.builtin.user:
+#    name: nginx
+#    system: true
+#  become: true
 
 - name: Ensure /run/nginx directory exists
   ansible.builtin.file:
@@ -151,7 +151,7 @@
 
 - name: Copy blockuseragents rules for nginx
   ansible.builtin.copy:
-    src: /home/dev/Ansible/photoshare/ansible/roles/nginx/files/blockuseragents.rules
+    src: "{{ role_path }}/files/blockuseragents.rules"
     dest: /etc/nginx/blockuseragents.rules
     owner: root
     group: root
@@ -160,7 +160,7 @@
 
 - name: Copy nginx main configuration
   ansible.builtin.copy:
-    src: /home/dev/Ansible/photoshare/ansible/roles/nginx/files/nginx.conf
+    src: "{{ role_path }}/files/nginx.conf"
     dest: /etc/nginx/nginx.conf
     owner: root
     group: root
@@ -174,7 +174,7 @@
 
 - name: Copy photoshare nginx configuration (post-SSL)
   ansible.builtin.template:
-    src: /home/dev/Ansible/photoshare/ansible/roles/nginx/files/photoshare-nginx.conf.j2
+    src: "{{ role_path }}/files/photoshare-nginx.conf.j2"
     dest: /etc/nginx/conf.d/photoshare.conf
     owner: root
     group: root
@@ -184,7 +184,7 @@
 
 - name: Template ssl-params configuration for nginx
   ansible.builtin.template:
-    src: /home/dev/Ansible/photoshare/ansible/roles/nginx/files/ssl-params.conf.j2
+    src: "{{ role_path }}/files/ssl-params.conf.j2"
     dest: /etc/nginx/snippets/ssl-params.conf
     owner: root
     group: root

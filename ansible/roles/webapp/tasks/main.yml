@@ -8,11 +8,11 @@
 
 - name: Copy secret generator script to the target
   ansible.builtin.copy:
-    src: generate_secrets.py
+    src: "{{ playbook_dir }}/generate_secrets.py"
     dest: /opt/photoshare_venv/generate_secrets.py
     owner: root
     group: root
-    mode: '0755'
+    mode: "0755"
 
 - name: Generate secrets
   ansible.builtin.command: >
@@ -31,7 +31,7 @@
   ansible.builtin.file:
     path: /etc/systemd/system/env
     state: directory
-    mode: '0755'
+    mode: "0755"
   become: true
 
 - name: Fill the template with secrets
@@ -40,13 +40,13 @@
     dest: /etc/systemd/system/env/photoshare
     owner: root
     group: root
-    mode: '0600'
+    mode: "0600"
 
 - name: Copy the systemd service file
   ansible.builtin.copy:
-    src: "{{ playbook_dir }}/roles/common/files/photoshare.service"
+    src: "{{ role_path }}/files/photoshare.service"
     dest: /etc/systemd/system/photoshare.service
-    mode: '0755'
+    mode: "0755"
 
 - name: Reload systemd daemon
   ansible.builtin.systemd:
@@ -63,7 +63,7 @@
 
 - name: Deploying application files
   ansible.builtin.copy:
-    src: "{{ playbook_dir }}/roles/webapp/files/"
+    src: "{{ role_path }}/files/"
     dest: /mnt/web/photoshare/
     owner: nginx
     group: nginx
@@ -79,15 +79,11 @@
     path: /opt/photoshare_logs
     owner: j
     group: j
-    mode: '0775'
+    mode: "0775"
     recurse: true
     state: directory
   when: not photoshare_logs_stat.stat.exists
   become: true
-
-- name: Reload systemd daemon
-  ansible.builtin.systemd:
-    daemon_reload: true
 
 - name: Enable and start photoshare service
   ansible.builtin.systemd:
