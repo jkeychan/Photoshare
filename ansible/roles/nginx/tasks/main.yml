@@ -46,7 +46,6 @@
     src: /tmp/nginx-{{ nginx_version }}.tar.gz
     dest: /tmp
     remote_src: true
-  when: nginx_version_check_result
 
 - name: Compile and install nginx [THIS WILL ALSO TAKE SOME TIME]
   become: true
