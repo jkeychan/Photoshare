@@ -27,16 +27,16 @@
       ansible.builtin.set_fact:
         server_ip: "{{ public_ip_result.json.ip }}"
 
-    # - name: Get rDNS name using dig
-    #   ansible.builtin.command: "dig +short -x {{ server_ip }}"
-    #   register: rdns_name_result
-    #   ignore_errors: true
-    #   changed_when: false
+    - name: Get rDNS name using dig
+      ansible.builtin.command: "dig +short -x {{ server_ip }}"
+      register: rdns_name_result
+      ignore_errors: true
+      changed_when: false
 
-    # - name: Extract rDNS name from result
-    #   ansible.builtin.set_fact:
-    #     rdns_name: "{{ rdns_name_result.stdout_lines[0] | regex_replace('\\.$', '') if rdns_name_result.stdout_lines | length > 0 else 'N/A' }}"
-    #   when: rdns_name_result is succeeded
+    - name: Extract rDNS name from result
+      ansible.builtin.set_fact:
+        rdns_name: "{{ rdns_name_result.stdout_lines[0] | regex_replace('\\.$', '') if rdns_name_result.stdout_lines | length > 0 else 'N/A' }}"
+      when: rdns_name_result is succeeded
 
     - name: Set default values based on gathered facts if not provided
       ansible.builtin.set_fact:
@@ -53,12 +53,12 @@
 
     - name: Confirm values with the user
       ansible.builtin.pause:
-        prompt: "Do these values look OK to proceed? (yes/[enter for default 'yes']/no)"
+        prompt: "Do these values look OK to proceed? (type YES if correct, else this exits)"
       register: confirmation_response
 
-    - name: Set confirmation result to 'yes' if user hits enter
+    - name: Set confirmation result to 'yes' or 'no'
       ansible.builtin.set_fact:
-        user_confirmation: "{{ 'yes' if confirmation_response.user_input == '' else confirmation_response.user_input | lower }}"
+        user_confirmation: "{{ 'yes' if confirmation_response.user_input | lower == 'yes' or confirmation_response.user_input == '' else 'no' }}"
 
     - name: Debug confirmation result
       ansible.builtin.debug:

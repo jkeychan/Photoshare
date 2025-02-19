@@ -36,7 +36,7 @@
       - "{{ rdns_name }}"
   register: resolved_ip
   changed_when: false
-  ignore_errors: true  # In case resolution fails
+  ignore_errors: true # In case resolution fails
 
 - name: Extract first IP from getent output
   ansible.builtin.set_fact:
