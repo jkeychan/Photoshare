@@ -33,7 +33,7 @@
   ansible.builtin.file:
     path: /etc/systemd/system/env
     state: directory
-    mode: "0755"
+    mode: "0644"
   become: true
 
 - name: Fill the template with secrets
@@ -49,10 +49,6 @@
     src: "{{ role_path }}/files/photoshare.service"
     dest: /etc/systemd/system/photoshare.service
     mode: "0644"
-
-- name: Reload systemd daemon
-  ansible.builtin.systemd:
-    daemon_reload: true
 
 # Add application files
 - name: Ensure the application directory exists
@@ -93,3 +89,7 @@
     enabled: true
     state: started
   no_log: true
+
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: true
