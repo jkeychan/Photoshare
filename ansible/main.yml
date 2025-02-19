@@ -16,6 +16,14 @@
       default: ""
 
   pre_tasks:
+    - name: Clear all facts to reset the playbook variables
+      ansible.builtin.set_fact:
+        admin_password: ""
+
+    - name: Remove admin_password from fact cache
+      ansible.builtin.meta:
+        flush_facts: true
+
     - name: Get Public IPv4 Address via API
       ansible.builtin.uri:
         url: https://api.ipify.org?format=json
