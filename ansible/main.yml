@@ -40,7 +40,7 @@
 
     - name: Set default values based on gathered facts if not provided
       ansible.builtin.set_fact:
-        letsencrypt_email: "{{ letsencrypt_email_input | default('admin@' + rdns_name | default(rdns_name, true), true) }}"
+        letsencrypt_email: "{{ letsencrypt_email_input | default('admin@' + rdns_name | default('admin@default-domain.com', true), true) }}"
 
     - name: Print determined values
       ansible.builtin.debug:
