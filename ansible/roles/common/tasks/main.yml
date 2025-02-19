@@ -94,7 +94,6 @@
     recurse: true
   become: true
 
-
 # Install NGINX Pre-requisites so we can install NGINX from source
 # Install latest version of PCRE2 if necessary
 
@@ -106,7 +105,7 @@
 
 - name: Set default fact for PCRE2 installation status
   ansible.builtin.set_fact:
-    pcre2_installed: false  # Default to not installed
+    pcre2_installed: false # Default to not installed
 
 - name: Update fact if PCRE2 10.42 is already installed
   ansible.builtin.set_fact:
@@ -125,9 +124,10 @@
   register: pcre2_tarball
 
 - name: Download PCRE2 source code if not already downloaded
-  ansible.builtin.command:
-    cmd: >
-      curl -L -o /tmp/pcre2-10.42.tar.gz https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.42/pcre2-10.42.tar.gz
+  ansible.builtin.get_url:
+    url: https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.42/pcre2-10.42.tar.gz
+    dest: /tmp/pcre2-10.42.tar.gz
+    mode: "0644"
   when:
     - not pcre2_tarball.stat.exists
     - not pcre2_installed
@@ -138,7 +138,7 @@
     dest: "/tmp/"
     remote_src: true
     mode: "0755"
-    creates: "/tmp/pcre2-10.42"  # Skip extraction if already done
+    creates: "/tmp/pcre2-10.42" # Skip extraction if already done
   when: not pcre2_installed
 
 - name: Install PCRE2
@@ -226,12 +226,11 @@
     openssl_installed: true
   when: "'3.0.2' in openssl_version.stdout"
 
-- name: Download OpenSSL source code using curl
-  ansible.builtin.command:
-    cmd: >
-      curl -L -o /tmp/openssl-3.0.2.tar.gz https://www.openssl.org/source/openssl-3.0.2.tar.gz
-  args:
-    creates: "/tmp/openssl-3.0.2.tar.gz"  # Prevents re-downloading if the file already exists
+- name: Download OpenSSL source code if not already downloaded
+  ansible.builtin.get_url:
+    url: https://www.openssl.org/source/openssl-3.0.2.tar.gz
+    dest: /tmp/openssl-3.0.2.tar.gz
+    mode: "0644"
   when: openssl_installed is not defined or not openssl_installed
 
 - name: Set permissions for OpenSSL tarball

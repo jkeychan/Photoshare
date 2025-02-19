@@ -28,25 +28,18 @@
 
 - name: Nginx version check debug
   ansible.builtin.debug:
-    msg: "Installed Nginx version: {{ nginx_version_check.stderr }}"
+    msg: "Installed Nginx version: {{ nginx_version_check.stderr | default('N/A') }}"
   when: nginx_version_check.rc == 0
 
 - name: Set nginx version check result
   ansible.builtin.set_fact:
-    nginx_version_check_result: "{{ nginx_version_check.rc != 0 or ('nginx/' + nginx_version) not in nginx_version_check.stderr }}"
+    nginx_version_check_result: "{{ nginx_version_check.rc != 0 or ('nginx/' ~ nginx_version) not in (nginx_version_check.stderr | default('')) }}"
 
-- name: Download nginx source with curl
-  ansible.builtin.command:
-    cmd: curl -L -o /tmp/nginx-{{ nginx_version }}.tar.gz https://nginx.org/download/nginx-{{ nginx_version }}.tar.gz
-  args:
-    creates: "/tmp/nginx-{{ nginx_version }}.tar.gz"
-
-- name: Ensure /tmp/nginx directory exists
-  ansible.builtin.file:
-    path: /tmp/nginx
-    state: directory
-    mode: "0755"
-  when: nginx_version_check_result
+- name: Download Nginx source if not already downloaded
+  ansible.builtin.get_url:
+    url: "https://nginx.org/download/nginx-{{ nginx_version }}.tar.gz"
+    dest: "/tmp/nginx-{{ nginx_version }}.tar.gz"
+    mode: "0644"
 
 - name: Extract nginx source
   ansible.builtin.unarchive:
@@ -146,6 +139,16 @@
     mode: "0644"
   become: true
 
+- name: Copy mime.types to /etc/nginx
+  ansible.builtin.copy:
+    src: /tmp/nginx-{{ nginx_version }}/conf/mime.types
+    dest: /etc/nginx/mime.types
+    owner: root
+    group: root
+    mode: "0644"
+    remote_src: true
+  become: true
+
 - name: Copy nginx main configuration
   ansible.builtin.copy:
     src: "{{ role_path }}/files/nginx.conf"
@@ -177,16 +180,6 @@
     owner: root
     group: root
     mode: "0644"
-  become: true
-
-- name: Copy mime.types to /etc/nginx
-  ansible.builtin.copy:
-    src: /tmp/nginx-{{ nginx_version }}/conf/mime.types
-    dest: /etc/nginx/mime.types
-    owner: root
-    group: root
-    mode: "0644"
-    remote_src: true
   become: true
 
 - name: Ensure nginx is enabled and running

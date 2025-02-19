@@ -16,24 +16,27 @@
       default: ""
 
   pre_tasks:
-    - name: Get Public IPv4 Address via curl
-      ansible.builtin.command: "curl -s https://api.ipify.org?format=json"
+    - name: Get Public IPv4 Address via API
+      ansible.builtin.uri:
+        url: https://api.ipify.org?format=json
+        method: GET
+        return_content: true
       register: public_ip_result
 
     - name: Set Public IP Address
       ansible.builtin.set_fact:
-        server_ip: "{{ public_ip_result.stdout | from_json | json_query('ip') }}"
+        server_ip: "{{ public_ip_result.json.ip }}"
 
-   # - name: Get rDNS name using dig
-   #   ansible.builtin.command: "dig +short -x {{ server_ip }}"
-   #   register: rdns_name_result
-   #   ignore_errors: true
-   #   changed_when: false
+    # - name: Get rDNS name using dig
+    #   ansible.builtin.command: "dig +short -x {{ server_ip }}"
+    #   register: rdns_name_result
+    #   ignore_errors: true
+    #   changed_when: false
 
-   # - name: Extract rDNS name from result
-   #   ansible.builtin.set_fact:
-   #     rdns_name: "{{ rdns_name_result.stdout_lines[0] | regex_replace('\\.$', '') if rdns_name_result.stdout_lines | length > 0 else 'N/A' }}"
-   #   when: rdns_name_result is succeeded
+    # - name: Extract rDNS name from result
+    #   ansible.builtin.set_fact:
+    #     rdns_name: "{{ rdns_name_result.stdout_lines[0] | regex_replace('\\.$', '') if rdns_name_result.stdout_lines | length > 0 else 'N/A' }}"
+    #   when: rdns_name_result is succeeded
 
     - name: Set default values based on gathered facts if not provided
       ansible.builtin.set_fact:
@@ -77,8 +80,8 @@
     - nginx
     - webapp
 
- # post_tasks:
- #   - name: Add user 'j' to the nginx group
- #     ansible.builtin.user:
- #       name: j
- #       groups: nginx
+  # post_tasks:
+  #   - name: Add user 'j' to the nginx group
+  #     ansible.builtin.user:
+  #       name: j
+  #       groups: nginx
