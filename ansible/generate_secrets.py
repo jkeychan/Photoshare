@@ -21,10 +21,10 @@ if __name__ == "__main__":
         sys.exit(1)
 
     admin_password = sys.argv[1]
-    flask_secret_key = generate_secret_key()
-    flask_wtf_secret_key = generate_secret_key()
+    flask_secret = generate_secret_key()
+    wtf_secret = generate_secret_key()
     bcrypt_hash = generate_bcrypt_hash(admin_password)
 
-    print(f"FLASK_SECRET_KEY={flask_secret_key}")
-    print(f"FLASK_WTF_SECRET_KEY={flask_wtf_secret_key}")
+    print(f"FKEY={flask_secret}")
+    print(f"WTFKEY={wtf_secret}")
     print(f"PSHR={bcrypt_hash}")

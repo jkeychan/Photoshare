@@ -23,8 +23,8 @@
 
 - name: Store generated secrets in Ansible facts
   ansible.builtin.set_fact:
-    flask_secret_key: "{{ (secret.stdout_lines | default([])) | select('match', '^FLASK_SECRET_KEY=.*$') | map('regex_replace', '^FLASK_SECRET_KEY=(.*)', '\\1') | first | default('') }}"
-    flask_wtf_secret_key: "{{ (secret.stdout_lines | default([])) | select('match', '^FLASK_WTF_SECRET_KEY=.*$') | map('regex_replace', '^FLASK_WTF_SECRET_KEY=(.*)', '\\1') | first | default('') }}"
+    flask_secret: "{{ (secret.stdout_lines | default([])) | select('match', '^FKEY=.*$') | map('regex_replace', '^FKEY=(.*)', '\\1') | first | default('') }}"
+    wtf_secret: "{{ (secret.stdout_lines | default([])) | select('match', '^WTFKEY=.*$') | map('regex_replace', '^WTFKEY=(.*)', '\\1') | first | default('') }}"
     pshr: "{{ (secret.stdout_lines | default([])) | select('match', '^PSHR=.*$') | map('regex_replace', '^PSHR=(.*)', '\\1') | first | default('') }}"
   no_log: true
   when: secret is defined
