@@ -6,7 +6,11 @@
     update_cache: true
     upgrade: safe
     cache_valid_time: 3600
-  no_log: true
+  register: apt_result
+  until: apt_result is succeeded
+  retries: 2
+  delay: 3
+  # no_log: true
 
 - name: Install basic Linux tools
   ansible.builtin.apt:
