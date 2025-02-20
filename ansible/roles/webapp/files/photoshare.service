@@ -7,7 +7,7 @@ User=j
 Group=j
 EnvironmentFile=/etc/systemd/system/env/photoshare
 WorkingDirectory=/mnt/web/photoshare
-ExecStart=/opt/photoshare_venv/bin/gunicorn app:app --bind 127.0.0.1:5000 --workers 4 --worker-class gevent --access-logfile /opt/photoshare_logs/access_log.txt --error-logfile /opt/photoshare_logs/error_log.txt --timeout 100 --keep-alive 4
+ExecStart=/opt/photoshare_venv/bin/gunicorn app:app --bind 127.0.0.1:5000 --workers 4 --worker-class gevent --access-logfile /var/log/photoshare/access_log.txt --error-logfile /var/log/photoshare/error_log.txt --timeout 100 --keep-alive 4
 Restart=always
 Environment="PATH=/opt/photoshare_venv/bin"
 KillMode=mixed

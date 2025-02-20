@@ -23,13 +23,13 @@
   check_mode: true
   no_log: true
 
-# Add lower prvileged user
+# Add lower prvileged user to install venv and logs in /opt
 
-- name: Create 'j' user
-  ansible.builtin.user:
-    name: j
-    groups: sudo
-  become: true
+# - name: Create 'j' user
+#  ansible.builtin.user:
+#    name: j
+#    groups: sudo
+#  become: true
 
 # Python, Virtual Environments
 - name: Install Python environment
@@ -84,15 +84,15 @@
   become: true
   no_log: true
 
-- name: Ensure correct ownership of the virtual environment
-  ansible.builtin.file:
-    path: /opt/photoshare_venv
-    state: directory
-    owner: j
-    group: j
-    mode: "0775"
-    recurse: true
-  become: true
+# - name: Ensure correct ownership of the virtual environment
+#  ansible.builtin.file:
+#    path: /opt/photoshare_venv
+#    state: directory
+#    owner: j
+#    group: j
+#    mode: "0775"
+#    recurse: true
+#  become: true
 
 # Install NGINX Pre-requisites so we can install NGINX from source
 # Install latest version of PCRE2 if necessary

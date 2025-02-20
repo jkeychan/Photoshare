@@ -67,21 +67,21 @@
     group: nginx
     mode: "0644"
 
-- name: Ensure the photoshare_logs directory exists
+- name: Ensure the photoshare log directory exists
   ansible.builtin.file:
-    path: /opt/photoshare_logs
+    path: /var/log/photoshare
     state: directory
-    mode: "0775"
+    mode: "0755"
   become: true
 
-- name: Ensure correct ownership for photoshare_logs directory
-  ansible.builtin.file:
-    path: /opt/photoshare_logs
-    owner: j
-    group: j
-    mode: "0775"
-    recurse: true
-  become: true
+# - name: Ensure correct ownership for photoshare log directory
+#  ansible.builtin.file:
+#    path: /var/log/photoshare
+#    owner: nginx
+#    group: nginx
+#    mode: "0755"
+#    recurse: true
+#  become: true
 
 - name: Enable and start photoshare service
   ansible.builtin.systemd:
