@@ -53,7 +53,7 @@
 
     - name: Confirm values with the user
       ansible.builtin.pause:
-        prompt: "Do these values look OK to proceed? (type YES if correct, else this exits)"
+        prompt: "Do these values look OK to proceed? (hit ENTER if correct, else hit CTRL+C then A)"
       register: confirmation_response
 
     - name: Set confirmation result to 'yes' or 'no'

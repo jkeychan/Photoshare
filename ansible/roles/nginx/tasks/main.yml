@@ -16,9 +16,31 @@
     state: present
   become: true
 
-- name: Define Nginx version
+- name: Ensure www-data user and group exist
+  ansible.builtin.user:
+    name: www-data
+    system: true
+    shell: /usr/sbin/nologin
+    create_home: false
+    home: /nonexistent
+  become: true
+
+- name: Fetch Nginx download page
+  ansible.builtin.uri:
+    url: https://nginx.org/en/download.html
+    return_content: true
+  register: nginx_download_page
+  become: false
+
+- name: Extract the latest stable Nginx version and set fact
   ansible.builtin.set_fact:
-    nginx_version: "1.26.1"
+    nginx_version: "{{ (nginx_download_page.content | regex_search('<center><h4>Stable version</h4>.*?nginx-(\\d+\\.\\d+\\.\\d+)', '\\1'))[0] }}"
+  become: false
+
+- name: Display the latest stable Nginx version
+  ansible.builtin.debug:
+    msg: "The latest stable Nginx version is {{ nginx_version }}"
+  become: false
 
 - name: Check if nginx exists
   ansible.builtin.command: "/usr/sbin/nginx -v"
@@ -55,14 +77,14 @@
       ansible.builtin.command:
         cmd: >
           ./configure --prefix=/etc/nginx --sbin-path=/usr/sbin/nginx
-          --conf-path=/etc/nginx/nginx.conf
+          --conf-path=/etc/nginx/nginx.conf --pid-path=/run/nginx/nginx.pid
           --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log
           --with-threads --with-stream --with-http_v2_module --with-file-aio
           --with-http_ssl_module --with-http_realip_module --with-http_addition_module
           --with-http_image_filter_module --with-http_geoip_module --with-http_sub_module
           --with-http_flv_module --with-http_mp4_module --with-http_gunzip_module
           --with-http_random_index_module --with-http_secure_link_module
-          --with-http_degradation_module --with-pcre --with-pcre-jit
+          --with-http_degradation_module --with-pcre --with-pcre-jit --user=www-data --group=www-data
         chdir: /tmp/nginx-{{ nginx_version }}
       changed_when: true
       no_log: true
@@ -82,9 +104,21 @@
   ansible.builtin.file:
     path: /run/nginx
     state: directory
+    owner: www-data
+    group: www-data
     mode: "0755"
-    owner: nginx
-    group: nginx
+  become: true
+  when: nginx_version_check_result
+
+- name: Ensure /var/log/nginx directory exists
+  ansible.builtin.file:
+    path: /var/log/nginx
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: "0755"
+  become: true
+  when: nginx_version_check_result
 
 - name: Create systemd service file for nginx
   ansible.builtin.copy:
@@ -96,6 +130,9 @@
 
       [Service]
       Type=forking
+      User=www-data
+      Group=www-data
+      PIDFile=/run/nginx/nginx.pid
       ExecStartPre=/usr/sbin/nginx -t -q -g 'daemon on; master_process on;'
       ExecStart=/usr/sbin/nginx -g 'daemon on; master_process on;'
       ExecReload=/usr/sbin/nginx -g 'daemon on; master_process on;' -s reload --pidfile /run/nginx/nginx.pid
@@ -187,4 +224,4 @@
     enabled: true
     state: started
   become: true
-  no_log: true
+  # no_log: true
