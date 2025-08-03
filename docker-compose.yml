@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  webapp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      - FLASK_ENV=production
+      - FKEY=${FKEY:-dev-secret-key-change-in-production}
+      - WTFKEY=${WTFKEY:-csrf-secret-key-change-in-production}
+      - PSHR=${PSHR}
+    volumes:
+      - ./static:/mnt/web/photoshare/static
+      - ./:/app
+    networks:
+      - web
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/templates:/etc/nginx/templates
+      - ./nginx/blockuseragents.rules:/etc/nginx/blockuseragents.rules
+      - certbot-etc:/etc/letsencrypt
+      - certbot-var:/var/lib/letsencrypt
+      - webroot:/var/www/html
+    depends_on:
+      - webapp
+    environment:
+      - DOMAIN=${DOMAIN}
+    restart: unless-stopped
+    networks:
+      - web
+
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - certbot-etc:/etc/letsencrypt
+      - certbot-var:/var/lib/letsencrypt
+      - webroot:/var/www/html
+    depends_on:
+      - nginx
+    command: certonly --webroot --webroot-path=/var/www/html --email ${LETSENCRYPT_EMAIL} --agree-tos --no-eff-email --staging -d ${DOMAIN}
+    networks:
+      - web
+
+volumes:
+  certbot-etc:
+  certbot-var:
+  webroot:
+
+networks:
+  web:
+    driver: bridge 

@@ -1,0 +1,9 @@
+{
+    "ansible.python.interpreterPath": "/usr/bin/python3",
+    "yaml.schemas": {
+        "https://raw.githubusercontent.com/ansible/ansible-lint/main/src/ansiblelint/schemas/ansible.json#/$defs/tasks": [
+            "file:///home/dev/Ansible/photoshare/ansible/roles/common/tasks/main.yml",
+            "file:///home/dev/Ansible/photoshare/ansible/roles/nginx/tasks/main.yml"
+        ]
+    }
+}

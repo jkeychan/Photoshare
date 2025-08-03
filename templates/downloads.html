@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="robots" content="noindex">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Files in {{ directory }}</title>
+
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    <!-- Classic favicon -->
+    <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+
+    <!-- Apple Touch Icon -->
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+
+    <!-- Various sized favicons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon-16x16.png') }}">
+
+    <!-- Android Icons -->
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='android-chrome-192x192.png') }}">
+    <link rel="icon" type="image/png" sizes="512x512" href="{{ url_for('static', filename='android-chrome-512x512.png') }}">
+
+    <!-- Site manifest -->
+    <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
+</head>
+<body>
+    <header>
+        <h1>File in {{ directory }}</h1>
+        <nav class="topnav">
+            <a href="{{ url_for('logout') }}">Logout</a>
+            <a href="{{ url_for('index') }}">Home</a>
+        </nav>
+    </header>
+    <section class="grid-container">
+        {% if not files %}
+        <p>No files found in this directory.</p>
+        {% else %}
+        {% for file in files %}
+        <article class="grid-item">
+            {% if file.lower().endswith(('.jpg', '.jpeg', '.png')) %}
+            <a href="{{ file }}">
+                <img src="{{ file }}" alt="{{ file.split('/')[-1] }}" loading="lazy">
+            </a>
+            {% elif file.lower().endswith('.mp4') %}
+            <video width="320" height="240" controls loading="lazy">
+                <source src="{{ file }}" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+            {% elif file.lower().endswith('.mov') %}
+            <video width="320" height="240" controls loading="lazy">
+                <source src="{{ file }}" type="video/quicktime">
+                Your browser does not support the video tag.
+            </video>
+            <!-- Download link for .mov files -->
+            <a href="{{ file }}" download="{{ file.split('/')[-1] }}">
+                Download {{ file.split('/')[-1] }}
+            </a>
+            {% endif %}
+        </article>
+        {% endfor %}
+        {% endif %}
+        </section>        
+    <div class="pagination-container">
+        {% if total_pages > 1 %}
+        <nav class="pagination">
+            {% if current_page > 1 %}
+            <a href="{{ url_for('show_directory', directory=directory, page=1) }}">First</a>
+            <a href="{{ url_for('show_directory', directory=directory, page=current_page - 1) }}">Previous</a>
+            {% endif %}
+            <span>Page {{ current_page }} of {{ total_pages }}</span>
+            {% if current_page < total_pages %}
+            <a href="{{ url_for('show_directory', directory=directory, page=current_page + 1) }}">Next</a>
+            <a href="{{ url_for('show_directory', directory=directory, page=total_pages) }}">Last</a>
+            {% endif %}
+        </nav>
+        {% endif %}
+    </div>
+</body>
+</html>

@@ -1,0 +1,61 @@
+---
+# Let's Encrypt Automatic TLS Certificate Setup
+
+- name: Manage LetsEncrypt Certificates
+  become: true
+  block:
+    - name: Check if Certbot is installed
+      ansible.builtin.command: which certbot
+      register: certbot_check
+      changed_when: false
+      failed_when: certbot_check.rc not in [0, 1]
+
+    - name: Install Certbot if missing (Debian/Ubuntu)
+      ansible.builtin.apt:
+        name: certbot
+        state: present
+      when: certbot_check.rc != 0
+      become: true
+
+    - name: Check if dhparams file exists
+      ansible.builtin.stat:
+        path: "/etc/letsencrypt/ssl-dhparams.pem"
+      register: dhparam_file
+
+    - name: Check if fullchain.pem exists
+      ansible.builtin.stat:
+        path: "/etc/letsencrypt/live/{{ rdns_name }}/fullchain.pem"
+      register: fullchain
+
+    - name: Check if privkey.pem exists
+      ansible.builtin.stat:
+        path: "/etc/letsencrypt/live/{{ rdns_name }}/privkey.pem"
+      register: privkey
+
+    - name: Check if Nginx is installed
+      ansible.builtin.command: which nginx
+      register: nginx_check
+      changed_when: false
+      failed_when: nginx_check.rc not in [0, 1]
+
+    - name: Stop Nginx before obtaining the cert
+      ansible.builtin.systemd:
+        name: nginx
+        state: stopped
+      when:
+        - nginx_check.rc == 0 # Ensure Nginx is installed
+        - not fullchain.stat.exists or not privkey.stat.exists
+      no_log: true
+
+    - name: TEST ONLY CERTS Request official certificate if certificate files do not exist
+      ansible.builtin.command:
+        cmd: "certbot certonly --test-cert --standalone --non-interactive -d {{ rdns_name }} --agree-tos --email {{ letsencrypt_email }}"
+      when:
+        - not fullchain.stat.exists or not privkey.stat.exists
+      changed_when: true
+
+    - name: Generate Diffie-Hellman parameters [Might take some time...]
+      ansible.builtin.command: "openssl dhparam -out /etc/letsencrypt/ssl-dhparams.pem 2048"
+      args:
+        creates: /etc/letsencrypt/ssl-dhparams.pem
+      no_log: true
