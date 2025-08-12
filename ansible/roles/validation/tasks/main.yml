@@ -1,0 +1,53 @@
+- name: Debug rDNS_name
+  ansible.builtin.debug:
+    var: rdns_name
+
+- name: Validate rdns_name
+  ansible.builtin.assert:
+    that:
+      - rdns_name is match('^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z]{2,})+$')
+    msg: "Please enter a valid rDNS name."
+
+- name: Set a hostname
+  ansible.builtin.hostname:
+    name: "{{ rdns_name | regex_replace('\\.$', '') }}" # Removes trailing dot
+
+- name: Strip trailing period from rdns_name
+  ansible.builtin.set_fact:
+    letsencrypt_email_without_dot: "{{ 'admin@' + rdns_name | regex_replace('\\.$', '') }}"
+
+- name: Validate letsencrypt_email
+  ansible.builtin.assert:
+    that:
+      - letsencrypt_email_without_dot == "" or letsencrypt_email_without_dot is match('^([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})$')
+    msg: "Please enter a valid email address or leave it empty."
+
+- name: Validate server_ip
+  ansible.builtin.assert:
+    that:
+      - server_ip is match('^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$')
+    msg: "Please enter a valid IPv4 address."
+
+- name: Resolve rDNS_name to an IP
+  ansible.builtin.command:
+    argv:
+      - getent
+      - ahosts
+      - "{{ rdns_name }}"
+  register: resolved_ip
+  changed_when: false
+  ignore_errors: true # In case resolution fails
+
+- name: Extract first IP from getent output
+  ansible.builtin.set_fact:
+    resolved_ip_cleaned: "{{ resolved_ip.stdout_lines[0].split()[0] | default('') }}"
+
+- name: Debug resolved IP
+  ansible.builtin.debug:
+    msg: "Resolved IP for {{ rdns_name }} is {{ resolved_ip_cleaned }}"
+
+- name: Validate rDNS resolves to server IP
+  ansible.builtin.assert:
+    that:
+      - resolved_ip_cleaned == server_ip
+    msg: "Mismatch! The rDNS name {{ rdns_name }} does not resolve to the expected IP {{ server_ip }}."

@@ -1,0 +1,273 @@
+---
+# Basic setup
+
+- name: Ensure system packages are updated (apt upgrade) [THIS CAN TAKE AWHILE...]
+  ansible.builtin.apt:
+    update_cache: true
+    upgrade: safe
+    cache_valid_time: 3600
+  register: apt_result
+  until: apt_result is succeeded
+  retries: 2
+  delay: 3
+  # no_log: true
+
+- name: Install basic Linux tools
+  ansible.builtin.apt:
+    name:
+      - htop
+      - vim
+      - curl
+      - git
+      - build-essential
+      - checkinstall
+      - software-properties-common
+    state: present
+  become: true
+  check_mode: true
+  no_log: true
+
+# Python, Virtual Environments
+- name: Install Python environment
+  ansible.builtin.apt:
+    name:
+      - python3
+      - python3-pip
+      - python3-venv
+      - virtualenv
+    state: present
+  become: true
+  no_log: true
+
+# Application Setup
+
+- name: Ensure /opt directory exists
+  ansible.builtin.file:
+    path: /opt
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+- name: Create a virtual environment for apps
+  ansible.builtin.command:
+    cmd: python3 -m venv /opt/photoshare_venv
+    creates: /opt/photoshare_venv
+  args:
+    creates: /opt/photoshare_venv
+  become: true
+
+# Install Python packages inside the virtual environment
+- name: Install Python packages inside virtual environment
+  ansible.builtin.pip:
+    name:
+      - gunicorn
+      - gevent
+      - Flask
+      - bcrypt
+      - Flask-Bcrypt
+      - Flask-Limiter
+      - Flask-Session
+      - Flask-WTF
+      - Jinja2
+      - Pillow
+      - urllib3
+      - Werkzeug
+      - WTForms
+    virtualenv: /opt/photoshare_venv
+    state: present
+  become: true
+  no_log: true
+
+# Install NGINX Pre-requisites so we can install NGINX from source
+# Install latest version of PCRE2 if necessary
+
+- name: Check PCRE2 version
+  ansible.builtin.command: pcre2grep --version
+  register: pcre2_version
+  changed_when: false
+  ignore_errors: true
+
+- name: Set default fact for PCRE2 installation status
+  ansible.builtin.set_fact:
+    pcre2_installed: false # Default to not installed
+
+- name: Update fact if PCRE2 10.42 is already installed
+  ansible.builtin.set_fact:
+    pcre2_installed: true
+  when:
+    - pcre2_version.stdout is defined
+    - pcre2_version.stdout is search("10.42")
+
+- name: Debug output
+  ansible.builtin.debug:
+    var: pcre2_installed
+
+- name: Check if PCRE2 tarball already exists
+  ansible.builtin.stat:
+    path: "/tmp/pcre2-10.42.tar.gz"
+  register: pcre2_tarball
+
+- name: Download PCRE2 source code if not already downloaded
+  ansible.builtin.get_url:
+    url: https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.42/pcre2-10.42.tar.gz
+    dest: /tmp/pcre2-10.42.tar.gz
+    mode: "0644"
+  when:
+    - not pcre2_tarball.stat.exists
+    - not pcre2_installed
+
+- name: Extract PCRE2 source code
+  ansible.builtin.unarchive:
+    src: "/tmp/pcre2-10.42.tar.gz"
+    dest: "/tmp/"
+    remote_src: true
+    mode: "0755"
+    creates: "/tmp/pcre2-10.42" # Skip extraction if already done
+  when: not pcre2_installed
+
+- name: Install PCRE2
+  ansible.builtin.command:
+    cmd: "{{ item }}"
+    chdir: "/tmp/pcre2-10.42"
+  loop:
+    - ./configure
+    - make
+    - make install
+  become: true
+  when: not pcre2_installed # noqa: no-changed-when
+  no_log: true
+
+# Install latest version of zlib if necessary
+
+- name: Check if zlib is installed
+  ansible.builtin.stat:
+    path: /usr/include/zlib.h
+  register: zlib_header
+
+- name: Extract zlib version from header
+  ansible.builtin.shell: |
+    awk -F '"' '/#define ZLIB_VERSION/ {print $2}' /usr/include/zlib.h
+  register: zlib_actual_version
+  when: zlib_header.stat.exists
+  changed_when: false
+  ignore_errors: true
+
+- name: Set zlib_installed fact based on version
+  ansible.builtin.set_fact:
+    zlib_installed: "{{ zlib_actual_version.stdout is search('^1\\.3$') }}"
+
+# The following tasks will only run if zlib_installed is false
+
+- name: Download zlib source code
+  ansible.builtin.get_url:
+    url: "http://www.zlib.net/current/zlib.tar.gz"
+    dest: "/tmp/zlib.tar.gz"
+    mode: "0644"
+  register: download_result
+  ignore_errors: true
+  when: not zlib_installed
+
+- name: Extract zlib source code
+  ansible.builtin.unarchive:
+    src: "/tmp/zlib.tar.gz"
+    dest: "/tmp/"
+    mode: "0755"
+    remote_src: true
+  when: not zlib_installed and download_result is succeeded
+
+- name: Determine extracted folder name
+  ansible.builtin.find:
+    paths: "/tmp/"
+    file_type: directory
+    patterns: "zlib*"
+  register: zlib_directory
+  changed_when: false
+  when: not zlib_installed and download_result is succeeded
+
+- name: Install zlib
+  ansible.builtin.command:
+    cmd: "{{ item }}"
+    chdir: "{{ zlib_directory.files[0].path }}"
+    creates: /usr/include/zlib.h
+  loop:
+    - ./configure --prefix=/usr
+    - make
+    - make install
+  become: true
+  when: not zlib_installed and download_result is succeeded # noqa: no-changed-when
+  no_log: true
+
+# Install latest stable OpenSSL if necessary
+
+- name: Check OpenSSL version
+  ansible.builtin.command: /usr/bin/openssl version
+  register: openssl_version
+  changed_when: false
+  ignore_errors: true
+
+- name: Extract OpenSSL version from command output
+  ansible.builtin.set_fact:
+    current_openssl_version: "{{ openssl_version.stdout.split(' ')[1] }}"
+  when: openssl_version.rc == 0
+
+- name: Debug current OpenSSL version
+  ansible.builtin.debug:
+    msg: "Current OpenSSL version: {{ current_openssl_version }}"
+  when: current_openssl_version is defined
+
+- name: Set fact if OpenSSL 3.0.2 is already installed
+  ansible.builtin.set_fact:
+    openssl_installed: true
+  when: "'3.0.2' in openssl_version.stdout"
+
+- name: Download OpenSSL source code if not already downloaded
+  ansible.builtin.get_url:
+    url: https://www.openssl.org/source/openssl-3.0.2.tar.gz
+    dest: /tmp/openssl-3.0.2.tar.gz
+    mode: "0644"
+  when: openssl_installed is not defined or not openssl_installed
+
+- name: Set permissions for OpenSSL tarball
+  ansible.builtin.file:
+    path: "/tmp/openssl-3.0.2.tar.gz"
+    mode: "0644"
+  when: openssl_installed is not defined or not openssl_installed
+
+- name: Extract OpenSSL source code
+  ansible.builtin.unarchive:
+    src: "/tmp/openssl-3.0.2.tar.gz"
+    dest: "/tmp/"
+    remote_src: true
+  when: openssl_installed is not defined or not openssl_installed
+
+- name: Install OpenSSL (static compilation) [THIS COULD TAKE SOME TIME]
+  ansible.builtin.command:
+    cmd: "{{ item }}"
+    chdir: /tmp/openssl-3.0.2
+  loop:
+    - ./config --prefix=/usr -static
+    - make
+    - make install
+  become: true
+  when: openssl_installed is not defined or not openssl_installed # noqa: no-changed-when
+  register: openssl_installation_result
+  no_log: true
+
+# Hardening Tasks
+
+- name: Ensure fail2ban is installed
+  ansible.builtin.package:
+    name: fail2ban
+    state: present
+  become: true
+  no_log: true
+
+- name: Ensure fail2ban service is enabled and running
+  ansible.builtin.service:
+    name: fail2ban
+    state: started
+    enabled: true
+  become: true
+  no_log: true
