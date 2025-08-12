@@ -4,7 +4,7 @@ A simple, secure Flask-based photo sharing application with Docker deployment an
 
 ## 🚀 Quickstart
 
-For experienced users who want to get started immediately:
+For users who want to get started immediately:
 
 ```bash
 # Clone the repository
