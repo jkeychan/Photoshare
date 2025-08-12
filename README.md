@@ -138,11 +138,52 @@ The script automatically:
 - Validates DNS resolution both ways (domain and IP)
 - Detects existing configuration and offers to reuse it
 - Generates secure secrets and environment files
+- Checks prerequisites and Docker setup
+- Resolves port conflicts (Docker-aware cleanup)
+- Validates media directories and disk space
 - Deploys with Docker and SSL certificates
+- Runs comprehensive health checks
 - Starts the PhotoShare service
 - Optionally configures auto-start on boot
 
 No manual configuration files required - just run the script and follow the prompts.
+
+## Deployment Features
+
+### Comprehensive Error Checking
+
+The deployment script includes robust validation to ensure foolproof deployments:
+
+#### **Prerequisites Validation**
+- Docker and Docker Compose installation
+- Project structure integrity
+- Script permissions and accessibility
+
+#### **Smart Port Management**
+- **Docker-aware conflict detection**: Identifies existing PhotoShare containers
+- **Automatic cleanup**: Offers to stop conflicting containers
+- **Service detection**: Distinguishes Docker containers from system services
+- **Safe restart**: Handles redeployments gracefully
+
+#### **Infrastructure Checks**
+- **Media directory validation**: Ensures `/mnt/photoshare/media` exists
+- **Disk space verification**: Confirms adequate storage
+- **SSH connectivity**: Tests remote access before deployment
+- **DNS validation**: Verifies domain resolution both ways
+
+#### **Deployment Safety**
+- **Staging certificates**: Safe testing with Let's Encrypt staging
+- **Health validation**: Post-deployment connectivity and functionality checks
+- **Rollback ready**: Clear error messages and recovery instructions
+- **Interactive prompts**: Smart defaults with user confirmation
+
+### Error Recovery
+
+If deployment fails, the script provides:
+- **Specific error identification**: Clear explanation of what went wrong
+- **Recovery suggestions**: Step-by-step troubleshooting guidance
+- **Service management**: Commands to restart, check logs, or clean up
+- **Port resolution**: Automatic handling of common port conflicts
 
 ## Requirements
 
