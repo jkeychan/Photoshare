@@ -9,10 +9,11 @@ class Config:
     SECRET_KEY = os.environ.get('FKEY', 'a_secret_key_for_local')
     WTF_CSRF_SECRET_KEY = os.environ.get(
         'WTFKEY', 'a_csrf_secret_key_for_local')
-    PASSWORD_HASH = os.environ.get('PSHR')
-    # Temporarily disable secure cookies for HTTP testing
-    # TODO: Set SESSION_COOKIE_SECURE = True when using HTTPS in production
-    SESSION_COOKIE_SECURE = False  # Set to True when using HTTPS
+    # Unescape double dollar signs from Docker Compose environment variable escaping
+    _raw_password_hash = os.environ.get('PSHR')
+    PASSWORD_HASH = _raw_password_hash.replace(
+        '$$', '$') if _raw_password_hash else None
+    SESSION_COOKIE_SECURE = True  # Set to True when using HTTPS
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
     PERMANENT_SESSION_LIFETIME = timedelta(days=1)

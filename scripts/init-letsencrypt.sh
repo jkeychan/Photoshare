@@ -17,19 +17,23 @@ staging=${STAGING:-1} # Set to 0 for production certificates
 mkdir -p nginx/conf.d
 mkdir -p nginx/templates
 
-# Create dummy certificates
+# Create dummy certificates in the Docker volume where nginx expects them
 echo "Creating dummy certificates..."
-mkdir -p certbot/conf/live/$domain
-openssl req -x509 -nodes -newkey rsa:2048 -days 1\
-    -keyout certbot/conf/live/$domain/privkey.pem \
-    -out certbot/conf/live/$domain/fullchain.pem \
-    -subj '/CN=localhost'
+docker-compose run --rm --entrypoint sh certbot -c "
+  mkdir -p /etc/letsencrypt/live/$domain && \
+  openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
+    -keyout /etc/letsencrypt/live/$domain/privkey.pem \
+    -out /etc/letsencrypt/live/$domain/fullchain.pem \
+    -subj '/CN=localhost'"
 
 echo "Starting nginx..."
-docker-compose up --force-recreate -d nginx
+docker-compose up --force-recreate -d nginx webapp
 
 echo "Deleting dummy certificates..."
-rm -rf certbot/conf/live/$domain
+docker-compose run --rm --entrypoint sh certbot -c "
+  rm -rf /etc/letsencrypt/live/$domain && \
+  rm -rf /etc/letsencrypt/archive/$domain && \
+  rm -rf /etc/letsencrypt/renewal/$domain.conf"
 
 echo "Requesting Let's Encrypt certificates..."
 staging_arg=""

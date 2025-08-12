@@ -23,6 +23,5 @@ map $http_user_agent $blockedagent {
     ~*pdrlabs        1;
     ~*InternetMeasurement        1;
     ~*burp       1;
-    # Add more patterns as needed
 }
 

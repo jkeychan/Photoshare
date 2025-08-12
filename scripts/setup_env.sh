@@ -17,11 +17,9 @@ if [[ -z "$ADMIN_PASSWORD" ]]; then
     echo
 fi
 
-# Prompt for email if not provided
-if [[ -z "$LETSENCRYPT_EMAIL" ]]; then
-    echo -n "Enter email for Let's Encrypt SSL certificates: "
-    read LETSENCRYPT_EMAIL
-fi
+# Set email automatically based on domain
+LETSENCRYPT_EMAIL="admin@${DOMAIN}"
+echo "Using Let's Encrypt email: ${LETSENCRYPT_EMAIL}"
 
 # Ask about staging vs production
 echo -n "Use Let's Encrypt staging (recommended for testing)? [Y/n]: "
@@ -36,13 +34,13 @@ echo
 echo "Generating secure secrets..."
 
 # Check if generate_secrets.py exists
-if [[ ! -f "generate_secrets.py" ]]; then
-    echo "Error: generate_secrets.py not found in current directory"
+if [[ ! -f "scripts/generate_secrets.py" ]]; then
+    echo "Error: scripts/generate_secrets.py not found"
     exit 1
 fi
 
 # Generate secrets using the script
-SECRETS_OUTPUT=$(python3 generate_secrets.py "$ADMIN_PASSWORD")
+SECRETS_OUTPUT=$(python3 scripts/generate_secrets.py "$ADMIN_PASSWORD")
 
 # Extract individual secrets
 FKEY=$(echo "$SECRETS_OUTPUT" | grep "^FKEY=" | cut -d'=' -f2-)
@@ -80,4 +78,4 @@ echo "  Email: ${LETSENCRYPT_EMAIL}"
 echo "  SSL Staging: ${STAGING} ($([ "$STAGING" = "1" ] && echo "testing" || echo "production"))"
 echo "  Secrets: Generated and secured"
 echo
-echo "You can now run: ./deploy.sh" 
+echo "You can now run: ./scripts/deploy.sh" 
