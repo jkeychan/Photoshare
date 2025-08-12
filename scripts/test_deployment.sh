@@ -278,7 +278,7 @@ if [[ "$DEPLOYMENT_TYPE" == "local" ]]; then
     # Local media tests
     if [[ -d "/mnt/photoshare/media" ]] && [[ -n "$(find /mnt/photoshare/media -type f \( -name "*.jpg" -o -name "*.png" -o -name "*.gif" -o -name "*.mp4" \) | head -1)" ]]; then
         run_test "Media files are accessible" "find /mnt/photoshare/media -type f | head -1 | xargs test -r"
-        run_test "Directory listing works" "timeout $TIMEOUT curl -s -k -H 'User-Agent: $USER_AGENT' '$BASE_URL/' | grep -q 'folder\\|directory'"
+        run_test "Directory listings protected (login required)" "timeout $TIMEOUT curl -s -k -H 'User-Agent: $USER_AGENT' '$BASE_URL/' | grep -qv 'folder\\|directory'" 1
     else
         echo "No local media files found - skipping media tests"
         ((TESTS_RUN += 2))
@@ -290,10 +290,10 @@ else
         # SSH-based media tests
         run_test "Remote media directory accessible" "ssh ${REMOTE_USER}@${DOMAIN} 'test -d /mnt/photoshare/media'"
         run_test "Media files exist" "ssh ${REMOTE_USER}@${DOMAIN} 'find /mnt/photoshare/media -type f | head -1' | grep -q '.'"
-        run_test "Directory listing works" "timeout $TIMEOUT curl -s -k -H 'User-Agent: $USER_AGENT' '$BASE_URL/' | grep -q 'folder\\|directory\\|PhotoShare'"
+        run_test "Directory listings protected (login required)" "timeout $TIMEOUT curl -s -k -H 'User-Agent: $USER_AGENT' '$BASE_URL/' | grep -q 'folder\\|directory'" 1
     else
         # Web-only media tests
-        run_test "Directory listing works" "timeout $TIMEOUT curl -s -k -H 'User-Agent: $USER_AGENT' '$BASE_URL/' | grep -q 'folder\\|directory\\|PhotoShare'"
+        run_test "Directory listings protected (login required)" "timeout $TIMEOUT curl -s -k -H 'User-Agent: $USER_AGENT' '$BASE_URL/' | grep -q 'folder\\|directory'" 1
         echo "Note: Direct media file access tests require SSH access (use --ssh flag)"
         ((TESTS_RUN += 1))
         ((TESTS_PASSED += 1))
