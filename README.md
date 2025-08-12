@@ -11,6 +11,9 @@ For users who want to get started immediately:
 git clone https://github.com/jkeychan/Photoshare.git
 cd Photoshare
 
+# Install local deployment dependencies (for deploy.sh script)
+pip install -r deploy-requirements.txt
+
 # Create media directory structure (local deployment)
 sudo mkdir -p /mnt/photoshare/media
 sudo chown -R $USER:$USER /mnt/photoshare
