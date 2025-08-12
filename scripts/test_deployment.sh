@@ -157,7 +157,7 @@ run_test() {
         fi
     else
         if [[ $expected_result -ne 0 ]]; then
-            echo -e "${GREEN}PASS${NC} (expected failure)"
+            echo -e "${GREEN}PASS${NC}"
             ((TESTS_PASSED++))
             return 0
         else
