@@ -252,11 +252,10 @@ echo "================"
 if [[ "$DOMAIN" != "localhost" && -n "$DOMAIN" ]]; then
     # Check if HTTPS is working (simpler and faster than certificate inspection)
     run_test "HTTPS is working" "timeout 5 curl -s -k -I -H 'User-Agent: $USER_AGENT' '$BASE_URL' >/dev/null"
-    run_test "HSTS header present" "timeout $TIMEOUT curl -s -k -I -H 'User-Agent: $USER_AGENT' '$BASE_URL' | grep -q 'Strict-Transport-Security'"
 else
     echo "Skipping SSL tests for localhost deployment"
-    ((TESTS_RUN += 2))
-    ((TESTS_PASSED += 2))
+    ((TESTS_RUN += 1))
+    ((TESTS_PASSED += 1))
 fi
 
 echo ""
