@@ -27,12 +27,10 @@ PhotoShare uses a flexible media directory structure (`/mnt/photoshare/media/`) 
 
 ### **Local Flexibility**
 - **Separate partitions**: Keep photos on dedicated storage partitions
-- **RAID arrays**: Use RAID configurations for redundancy
-- **SSD + HDD**: App on fast SSD, media on large HDD
 
 ### **Easy Migration & Backup**
 - **Simple backups**: Backup just the media directory independently
-- **Server migration**: Move application without touching media files
+- **Server migration**: Move or redeploy application without touching media files
 - **Storage upgrades**: Upgrade storage capacity without rebuilding
 
 This architecture means your PhotoShare application stays lightweight while your media storage can grow and adapt to your needs.
@@ -75,9 +73,8 @@ Organize your media files into folders within `/mnt/photoshare/media/` however y
     └── concert.mp4
 ```
 
-You can upload files using any method you prefer:
+You can upload files using any method you prefer (ex.):
 - **SCP**: `scp -r ./my-photos/ user@server:/mnt/photoshare/media/Family-Photos/`
-- **SFTP**: Use an SFTP client like FileZilla
 - **rsync**: `rsync -avz ./photos/ user@server:/mnt/photoshare/media/Travel/`
 
 ### 4. Set proper permissions
