@@ -2,6 +2,45 @@
 
 A simple, secure Flask-based photo sharing application with Docker deployment and SSL support.
 
+## 🚀 Quickstart
+
+For experienced users who want to get started immediately:
+
+```bash
+# Clone the repository
+git clone https://github.com/jkeychan/Photoshare.git
+cd Photoshare
+
+# Create media directory structure (local deployment)
+sudo mkdir -p /mnt/photoshare/media
+sudo chown -R $USER:$USER /mnt/photoshare
+# Upload your photos to /mnt/photoshare/media/Your-Folder-Name/
+
+# Deploy with interactive setup
+./deploy.sh
+
+# Follow prompts for:
+# - Deployment type (local/remote)
+# - Domain/server details
+# - SSL preferences (staging recommended first)
+# - Auto-start configuration
+```
+
+**Remote deployment:**
+```bash
+# For remote servers, ensure you have:
+# - SSH key access to your server
+# - Docker installed on target server
+# - Domain pointing to server IP
+
+./deploy.sh
+# Choose remote deployment and provide server details
+```
+
+**That's it!** The script handles Docker setup, SSL certificates, port conflicts, and health validation automatically.
+
+---
+
 ## Features
 
 - **Secure Authentication**: Password-protected access to your photos
