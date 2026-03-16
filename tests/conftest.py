@@ -31,6 +31,6 @@ def flask_client(tmp_media: Path, monkeypatch):
     app_module.app.config["TESTING"] = True
     app_module.app.config["WTF_CSRF_ENABLED"] = False
     with app_module.app.test_client() as client:
-        with app_module.app.session_transaction() as sess:
+        with client.session_transaction() as sess:
             sess["logged_in"] = True
         yield client
