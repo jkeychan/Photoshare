@@ -114,6 +114,24 @@ server {
         access_log off;
     }
 
+    # Thumbnails — served directly by nginx when cached; Flask generates on miss.
+    # NOTE: Must come before ^~ /static/ so the longer prefix wins.
+    location ^~ /static/thumbnails/ {
+        alias /mnt/web/photoshare/static/thumbnails/;
+
+        # Security headers (nginx child blocks don't inherit add_header)
+        add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+        add_header X-Frame-Options SAMEORIGIN always;
+        add_header X-Content-Type-Options nosniff always;
+        add_header Referrer-Policy "no-referrer-when-downgrade" always;
+
+        # Long-lived cache — thumbnails are stable once generated
+        expires 90d;
+        add_header Cache-Control "public, immutable" always;
+
+        access_log off;
+    }
+
     # Other static assets (CSS, JS, icons)
     location ^~ /static/ {
         alias /mnt/web/photoshare/static/;
