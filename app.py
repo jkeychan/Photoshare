@@ -1,223 +1,216 @@
-import os
 import logging
+import os
+from functools import lru_cache, wraps
+from pathlib import Path
 from urllib.parse import unquote
 
-from flask import (Flask, render_template, request, redirect, url_for, flash,
-                   abort, session, send_from_directory, make_response)
+from config import Config
+from flask import (
+    Flask,
+    abort,
+    flash,
+    redirect,
+    render_template,
+    send_from_directory,
+    session,
+    url_for,
+)
 from flask_bcrypt import Bcrypt
 from flask_wtf import FlaskForm
-from wtforms import PasswordField, SubmitField
+from wtforms import PasswordField
 from wtforms.validators import DataRequired
-from config import Config
-from functools import wraps
 
-app = Flask(__name__, static_url_path='/static',
-            static_folder='/mnt/web/photoshare/static')
+_static_folder = os.environ.get("STATIC_FOLDER", "/mnt/web/photoshare/static")
+app = Flask(__name__, static_url_path="/static", static_folder=_static_folder)
 app.config.from_object(Config)
-
-# Re-enable CSRF protection
-# app.config['WTF_CSRF_ENABLED'] = False
-
 app.logger.setLevel(logging.DEBUG)
 bcrypt = Bcrypt(app)
 
-# app.debug = True
+_STATIC_ROOT = Path(app.static_folder)
+_MEDIA_ROOT = _STATIC_ROOT / "media"
+_DOWNLOADS_ROOT = _STATIC_ROOT / "downloads"
+
+# Resolved once at startup — passed to _safe_path so Path.resolve() is not
+# re-issued on every request (avoids a realpath(3) syscall per call).
+_MEDIA_ROOT_R = _MEDIA_ROOT.resolve()
+_DOWNLOADS_ROOT_R = _DOWNLOADS_ROOT.resolve()
+
+_PAGE_SIZE = 10
 
 
-# ------------------- HELPER FUNCTIONS --------------------
+# ------------------- HELPERS --------------------
 
-def join_static_path(*path_segments):
+
+def _safe_path(base_r: Path, *parts: str) -> Path:
+    """Resolve a joined path and abort 400 if it escapes *base_r* (path traversal guard).
+
+    *base_r* must already be a canonical absolute path; pass one of the
+    module-level ``_*_ROOT_R`` constants so ``Path.resolve()`` is not
+    re-issued on every request.
     """
-    Join the given path segments to the static folder path.
+    resolved = base_r.joinpath(*parts).resolve()
+    if not resolved.is_relative_to(base_r):
+        abort(400)
+    return resolved
 
-    Args:
-    *path_segments (str): Path segments to be joined.
 
-    Returns:
-    str: Full path joined with the static folder path.
+def _list_dir(
+    path: Path, *, dirs_only: bool = False, files_only: bool = False
+) -> list[str]:
+    """Return a sorted list of entry names in *path*.
+
+    Returns an empty list if the directory does not exist.  Pass *dirs_only*
+    or *files_only* to filter by entry type.
     """
-    return os.path.join(app.static_folder, *path_segments)
+    try:
+        entries = path.iterdir()
+        if dirs_only:
+            return sorted(e.name for e in entries if e.is_dir())
+        if files_only:
+            return sorted(e.name for e in entries if e.is_file())
+        return sorted(e.name for e in entries)
+    except FileNotFoundError:
+        return []
 
 
-def get_forwarded_address():
+@lru_cache(maxsize=256)
+def _list_directory_cached(
+    dir_path: Path, _mtime: float
+) -> tuple[list[str], list[str]]:
+    """Return (files, subdirs) for *dir_path*, sorted, in a single iterdir() pass.
+
+    *_mtime* is the directory's modification time and acts as a cache-bust key —
+    the cache is invalidated automatically when the directory contents change.
+    Results are cached across pagination requests for the same album state,
+    avoiding a full O(n log n) sort on every page flip.
     """
-    Get the forwarded IP address from the request headers.
-
-    Returns:
-    str: The forwarded IP address or the remote address of the request.
-    """
-    return request.headers.get('X-Forwarded-For', request.remote_addr)
-
-
-def is_media_file(filename):
-    """
-    Check if the given filename is a media file.
-
-    Args:
-    filename (str): Name of the file to check.
-
-    Returns:
-    bool: True if the file is a media file, otherwise False.
-    """
-    media_extensions = ('.jpg', '.jpeg', '.png', '.mov', '.mp4')
-    return os.path.splitext(filename)[1].lower() in media_extensions
-
-
-# ------------------- ROUTES & CONTROLLERS --------------------
-
-@app.route('/favicon.ico')
-def favicon():
-    """Serve the favicon.ico file."""
-    return send_from_directory(join_static_path(), 'favicon.ico', mimetype='image/vnd.microsoft.icon')
-
-
-@app.route('/', methods=['GET', 'POST'])
-def index():
-    """
-    Index route to display the main page or login page.
-
-    Returns:
-    Response: Rendered template.
-    """
-    if session.get('logged_in'):
-        directories = [d for d in os.listdir(join_static_path(
-            'media')) if os.path.isdir(join_static_path('media', d))]
-        if 'downloads' in request.args:
-            return render_template('downloads.html', files=os.listdir(join_static_path('downloads')))
-        return render_template('index.html', directories=directories)
-
-    form = LoginForm()
-
-    if request.method == 'POST':
-        if form.validate_on_submit():
-            password_hash = app.config.get('PASSWORD_HASH')
-            submitted_password = form.password.data
-
-            if bcrypt.check_password_hash(password_hash, submitted_password):
-                session['logged_in'] = True
-                return redirect(url_for('index'))
-            flash('Login Failed.', 'error')
-
-    return render_template('login.html', form=form)
-
-
-@app.route('/logout')
-def logout():
-    """Log out the user and redirect to the index page."""
-    session.pop('logged_in', None)
-    return redirect(url_for('index'))
-
-
-@app.route('/photo/<path:directory>/<filename>')
-def show_photo(directory, filename):
-    """
-    Serve a specific photo from the given directory.
-
-    Args:
-    directory (str): Directory containing the photo.
-    filename (str): Name of the photo file.
-
-    Returns:
-    Response: Served photo or 404 error if not found.
-    """
-    directory, filename = unquote(directory), unquote(filename)
-    photo_path = join_static_path('media', directory, filename)
-    if not os.path.exists(photo_path):
-        abort(404, description="Photo not found.")
-    return send_from_directory(os.path.dirname(photo_path), os.path.basename(photo_path))
-
-
-@app.route('/directory/<path:directory>/', defaults={'page': 1}, methods=['GET'])
-@app.route('/directory/<path:directory>/<int:page>/', methods=['GET'])
-def show_directory(directory, page=1):
-    """
-    Display files and subdirectories of a given directory.
-
-    Args:
-    directory (str): Name of the directory to display.
-    page (int): Current page number.
-
-    Returns:
-    Response: Rendered template showing the directory contents.
-    """
-    directory = unquote(directory)
-    local_path = join_static_path('media', directory)
-    files = sorted([f for f in os.listdir(local_path) if os.path.isfile(
-        join_static_path('media', directory, f))])
-    subdirs = sorted([d for d in os.listdir(local_path) if os.path.isdir(
-        join_static_path('media', directory, d))])
-
-    per_page = 10
-    paginated_files = files[(page - 1) * per_page:page * per_page]
-
-    return render_template('directory.html',
-                           directory=directory,
-                           subdirs=(subdirs if page == 1 else []),
-                           files=paginated_files,
-                           total_pages=(len(files) + per_page - 1) // per_page,
-                           current_page=page)
-
-
-@app.route('/download/<filename>/', methods=['GET'])
-def download_file(filename):
-    """
-    Serve a file for download from the downloads directory.
-
-    Args:
-    filename (str): Name of the file to download.
-
-    Returns:
-    Response: Served file for download or 404 error if not found.
-    """
-    file_path = join_static_path('downloads', filename)
-    if os.path.exists(file_path):
-        return send_from_directory(join_static_path('downloads'), filename, as_attachment=True)
-    abort(404, description="File not found.")
-
-
-@app.errorhandler(429)
-def ratelimit_handler(e):
-    """Handle rate limiting error with a custom response."""
-    return render_template('error.html'), 429
-
-
-# ------------------- MODELS & FORMS --------------------
-
-class LoginForm(FlaskForm):
-    """
-    Form for logging into the application.
-
-    Attributes:
-    password (PasswordField): Field to input password.
-    submit (SubmitField): Button to submit the form.
-    """
-    password = PasswordField('Password', validators=[DataRequired()])
-    submit = SubmitField('Login')
+    entries = list(dir_path.iterdir())
+    return (
+        sorted(e.name for e in entries if e.is_file()),
+        sorted(e.name for e in entries if e.is_dir()),
+    )
 
 
 # ------------------- DECORATORS --------------------
 
+
 def login_required(f):
-    """
-    Decorator to ensure a route requires user to be logged in.
+    """Redirect unauthenticated requests to the login page."""
 
-    Args:
-    f (function): The function to decorate.
-
-    Returns:
-    function: The decorated function.
-    """
     @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not session.get('logged_in'):
-            flash('You need to log in to access this page.', 'error')
-            return redirect(url_for('index'))
+    def decorated(*args, **kwargs):
+        if not session.get("logged_in"):
+            return redirect(url_for("index"))
         return f(*args, **kwargs)
 
-    return decorated_function
+    return decorated
+
+
+# ------------------- FORMS --------------------
+
+
+class LoginForm(FlaskForm):
+    password = PasswordField("Password", validators=[DataRequired()])
+
+
+# ------------------- ROUTES --------------------
+
+
+@app.route("/favicon.ico")
+def favicon():
+    return send_from_directory(
+        _STATIC_ROOT, "favicon.ico", mimetype="image/vnd.microsoft.icon"
+    )
+
+
+@app.route("/", methods=["GET", "POST"])
+def index():
+    if session.get("logged_in"):
+        return render_template(
+            "index.html",
+            directories=_list_dir(_MEDIA_ROOT, dirs_only=True),
+        )
+
+    form = LoginForm()
+    if form.validate_on_submit():
+        if bcrypt.check_password_hash(app.config["PASSWORD_HASH"], form.password.data):
+            session["logged_in"] = True
+            session.permanent = True
+            return redirect(url_for("index"))
+        flash("Login failed.", "error")
+    return render_template("login.html", form=form)
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("index"))
+
+
+@app.route("/downloads/")
+@login_required
+def downloads():
+    return render_template(
+        "downloads.html",
+        files=_list_dir(_DOWNLOADS_ROOT, files_only=True),
+    )
+
+
+@app.route("/directory/<path:directory>/", defaults={"page": 1})
+@app.route("/directory/<path:directory>/<int:page>/")
+@login_required
+def show_directory(directory: str, page: int = 1):
+    directory = unquote(directory)
+    dir_path = _safe_path(_MEDIA_ROOT_R, directory)
+    if not dir_path.is_dir():
+        abort(404)
+    mtime = dir_path.stat().st_mtime
+    all_files, subdirs = _list_directory_cached(dir_path, mtime)
+    total_pages = max(1, (len(all_files) + _PAGE_SIZE - 1) // _PAGE_SIZE)
+    return render_template(
+        "directory.html",
+        directory=directory,
+        subdirs=subdirs if page == 1 else [],
+        files=all_files[(page - 1) * _PAGE_SIZE : page * _PAGE_SIZE],
+        total_pages=total_pages,
+        current_page=page,
+    )
+
+
+@app.route("/download/<filename>/")
+@login_required
+def download_file(filename: str):
+    filename = unquote(filename)
+    file_path = _safe_path(_DOWNLOADS_ROOT_R, filename)
+    if not file_path.is_file():
+        abort(404)
+    return send_from_directory(_DOWNLOADS_ROOT, filename, as_attachment=True)
+
+
+# ------------------- ERROR HANDLERS --------------------
+
+
+@app.errorhandler(400)
+def bad_request(e):
+    return render_template("error.html", error_message="Bad request."), 400
+
+
+@app.errorhandler(404)
+def not_found(e):
+    return render_template("error.html", error_message="Page not found."), 404
+
+
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    return (
+        render_template(
+            "error.html", error_message="Too many requests. Please slow down."
+        ),
+        429,
+    )
 
 
 # ------------------- MAIN --------------------
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run()

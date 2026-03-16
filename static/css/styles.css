@@ -27,13 +27,6 @@ body {
   padding-top: 10vh;
   background-color: var(--main-bg-color);
 }
-body {
-  font-family: Arial, sans-serif;
-  margin: 0;
-  padding: 0;
-  padding-top: 10vh;
-  background-color: var(--main-bg-color);
-}
 
 h1 {
   color: var(--main-text-color);
@@ -189,26 +182,26 @@ h1 {
     transition: background-color 0.3s; /* Added for smooth background color transition */
 }
 
-/* Specific styling for the Logout button */
-.topnav a[href="{{ url_for('logout') }}"] {
-    background-color: #007BFF;  /* Blue background color (change as needed) */
-    color: white;  /* White text color */
-    border-radius: 4px;  /* Rounded corners */
-    font-weight: bold;  /* Bold font */
-    margin-left: auto;  /* Push the logout button to the right side */
+/* Logout button */
+.topnav a.logout-link {
+    background-color: #007bff;
+    color: white;
+    border-radius: 4px;
+    font-weight: bold;
+    margin-left: auto;
 }
 
-.topnav a[href="{{ url_for('logout') }}"]:hover {
-    background-color: #0056b3;  /* Darker blue on hover */
+.topnav a.logout-link:hover {
+    background-color: #0056b3;
 }
 
-.topnav a[href="{{ url_for('logout') }}"]:active {
-    background-color: #003580;  /* Even darker blue on active (when pressed) */
+.topnav a.logout-link:active {
+    background-color: #003580;
 }
 
-/* Original hover styling for other topnav links */
-.topnav a:not([href="{{ url_for('logout') }}"]):hover {
-    background-color: var(--color3); /* Using the third color for hover state */
+/* Hover styling for non-logout nav links */
+.topnav a:not(.logout-link):hover {
+    background-color: var(--color3);
     color: #fff;
 }
 
