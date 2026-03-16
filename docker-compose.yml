@@ -2,28 +2,28 @@ services:
   webapp:
     build: .
     volumes:
-      - ./:/app
+      # Data disk mounts only — do NOT bind-mount source code;
+      # the image must be rebuilt to deploy code changes.
       - ./static:/mnt/web/photoshare/static
       - /mnt/photoshare/media:/mnt/web/photoshare/static/media
       - /mnt/photoshare/uploads:/mnt/web/photoshare/uploads
     environment:
       - FLASK_ENV=${FLASK_ENV}
       - FKEY=${FKEY}
-      - WTFKEY=${WTFKEY}  
+      - WTFKEY=${WTFKEY}
       - PSHR=${PSHR}
-    depends_on: []
     restart: unless-stopped
     networks:
       - web
 
   nginx:
-    image: nginx:alpine
+    image: nginx:stable-alpine
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/templates:/etc/nginx/templates
+      - ./nginx/templates:/etc/nginx/templates:ro
       - ./nginx/blockuseragents.rules:/etc/nginx/blockuseragents.rules:ro
       - ./static:/mnt/web/photoshare/static:ro
       - /mnt/photoshare/media:/mnt/web/photoshare/static/media:ro
@@ -46,7 +46,7 @@ services:
       - webroot:/var/www/html
     depends_on:
       - nginx
-    command: certonly --webroot --webroot-path=/var/www/html --email ${LETSENCRYPT_EMAIL} --agree-tos --no-eff-email --staging -d ${DOMAIN}
+    command: renew --webroot --webroot-path=/var/www/html --non-interactive
 
 volumes:
   certbot-etc:
