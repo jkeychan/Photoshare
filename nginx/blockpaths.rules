@@ -1,0 +1,59 @@
+# Map bad request paths to $blocked_path = 1.
+# Requests matching here are dropped with 444 (no response) in the server block.
+# This is a Python/Flask app — none of these paths are valid.
+map $request_uri $blocked_path {
+    default 0;
+
+    # ── PHP exploits ──────────────────────────────────────────────────────────
+    # Any .php request — this server has no PHP
+    ~*\.php                         1;
+    # PHP eval/code-execution probes
+    ~*eval-stdin                    1;
+    ~*pearcmd                       1;  # PEARCMD RCE (CVE-2022-*)
+    ~*invokefunction                1;  # ThinkPHP RCE
+    # Composer/PHPUnit exploit sweep (CVE-2017-9841)
+    ~*/vendor/phpunit               1;
+    ~*/vendor/vendor                1;
+
+    # ── Spring Boot / Java ────────────────────────────────────────────────────
+    ~*/actuator                     1;  # Spring Boot actuator leak
+    ~*/_ignition                    1;  # Laravel Ignition RCE
+
+    # ── Symfony ───────────────────────────────────────────────────────────────
+    ~*/_profiler                    1;
+
+    # ── Kubernetes / container APIs ───────────────────────────────────────────
+    ~*/containers/json              1;  # Docker daemon API
+    ~*/openapi/v2                   1;  # Kubernetes API server
+
+    # ── VPN / remote access panels ───────────────────────────────────────────
+    ~*/remote/login                 1;  # FortiGate SSL VPN
+    ~*/global-protect               1;  # Palo Alto GlobalProtect
+
+    # ── Exchange / Microsoft ──────────────────────────────────────────────────
+    ~*/Autodiscover                 1;
+    ~*/owa/                         1;  # Outlook Web Access
+    ~*/ecp/                         1;  # Exchange Control Panel
+
+    # ── GIS / map servers ────────────────────────────────────────────────────
+    ~*/geoserver                    1;  # GeoServer RCE (CVE-2024-36401)
+
+    # ── WordPress ────────────────────────────────────────────────────────────
+    ~*/wp-login                     1;
+    ~*/wp-admin                     1;
+    ~*/wp-content                   1;
+    ~*/xmlrpc\.php                  1;
+
+    # ── Config / secrets file probes ─────────────────────────────────────────
+    ~*/config\.json                 1;
+    ~*/docker-compose               1;
+    ~*/\.env                        1;  # Belt-and-suspenders (hidden-file rule also covers this)
+    ~*/\.aws                        1;
+    ~*/\.ssh                        1;
+
+    # ── Generic admin / console panels ───────────────────────────────────────
+    ~*/console/?$                   1;
+    ~*/webui/?$                     1;
+    ~*/helpdesk/WebObjects          1;  # Apple Helpdesk
+    ~*/portal/?$                    1;
+}

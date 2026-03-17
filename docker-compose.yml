@@ -27,6 +27,7 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/templates:/etc/nginx/templates:ro
       - ./nginx/blockuseragents.rules:/etc/nginx/blockuseragents.rules:ro
+      - ./nginx/blockpaths.rules:/etc/nginx/blockpaths.rules:ro
       - ./static:/mnt/web/photoshare/static:ro
       - /mnt/photoshare/media:/mnt/web/photoshare/static/media:ro
       - certbot-etc:/etc/letsencrypt

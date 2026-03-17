@@ -1,6 +1,22 @@
 # Block flagged user agents (bots, scanners, etc.)
 include /etc/nginx/blockuseragents.rules;
 
+# Block known-bad request paths (PHP exploits, admin panels, RCE probes, etc.)
+include /etc/nginx/blockpaths.rules;
+
+# Default server — silently drop requests for unknown hostnames (port scanners, etc.)
+server {
+    listen 80 default_server;
+    listen 443 ssl default_server;
+    http2 on;
+    server_name _;
+
+    ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+
+    return 444;
+}
+
 # Redirect HTTP → HTTPS
 server {
     listen 80;
@@ -8,6 +24,10 @@ server {
 
     if ($blockedagent) {
         return 403;
+    }
+
+    if ($blocked_path) {
+        return 444;
     }
 
     # Allow certbot ACME challenges through
@@ -27,6 +47,10 @@ server {
 
     if ($blockedagent) {
         return 403;
+    }
+
+    if ($blocked_path) {
+        return 444;
     }
 
     # --- SSL ---
@@ -55,11 +79,12 @@ server {
 
     client_max_body_size 100m;
 
-    # Compress HTML and JSON responses from the app backend
+    # Compress responses from the app backend.
+    # text/html is always compressed by nginx and must NOT be listed in gzip_types.
     gzip on;
     gzip_vary on;
     gzip_proxied any;
-    gzip_types text/html text/plain application/json;
+    gzip_types text/plain application/json;
     gzip_min_length 1024;
 
     # Proxy timeouts (generous for large file proxying)
