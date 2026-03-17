@@ -40,16 +40,17 @@ map $http_user_agent $blockedagent {
     ~*CensysInspect  1;
     ~*Expanse        1;
     ~*zgrab          1;
-    ~*masscan        1;
     ~*SSH            1;
     ~*ipip           1;
     ~*pdrlabs        1;
     ~*InternetMeasurement 1;
     ~*shodan         1;
-    ~*l9explore      1;  # LeakIX scanner (seen in logs)
+    ~*l9explore      1;  # LeakIX scanner
     ~*LeakIX         1;
+    ~*mrtscan        1;  # Azure/Microsoft MRT scanner
+    ~*paloaltonetworks 1;  # Palo Alto Cortex Xpanse scanner
 
     # UA strings seen in exploit scans against this server
     ~*Custom-AsyncHttpClient 1;  # PHP framework exploit sweep
-    ~*QIHU           1;          # 360 Security (Chinese scanner browser)
+    ~*QIHU           1;          # 360 Security (Chinese scanner)
 }
