@@ -17,6 +17,7 @@ from flask import (
 )
 from flask_bcrypt import Bcrypt
 from flask_wtf import FlaskForm
+from thumbnailer import generate_thumbnail
 from wtforms import PasswordField
 from wtforms.validators import DataRequired
 
@@ -34,8 +35,11 @@ _DOWNLOADS_ROOT = _STATIC_ROOT / "downloads"
 # re-issued on every request (avoids a realpath(3) syscall per call).
 _MEDIA_ROOT_R = _MEDIA_ROOT.resolve()
 _DOWNLOADS_ROOT_R = _DOWNLOADS_ROOT.resolve()
+_THUMBNAILS_ROOT = _STATIC_ROOT / "thumbnails"
+_THUMBNAILS_ROOT_R = _THUMBNAILS_ROOT.resolve()
 
 _PAGE_SIZE = 10
+_THUMB_SIZE = (400, 400)
 
 
 # ------------------- HELPERS --------------------
@@ -154,6 +158,36 @@ def downloads():
         "downloads.html",
         files=_list_dir(_DOWNLOADS_ROOT, files_only=True),
     )
+
+
+@app.route("/thumb/<path:directory>/<filename>")
+@login_required
+def thumbnail(directory: str, filename: str):
+    """Serve a thumbnail, generating and caching it on first request.
+
+    Thumbnails are JPEG files stored in static/thumbnails/ mirroring the
+    static/media/ structure. Generated once on first request, served from
+    disk thereafter.
+    """
+    directory = unquote(directory)
+    filename = unquote(filename)
+
+    src = _safe_path(_MEDIA_ROOT_R, directory, filename)
+    if not src.is_file():
+        abort(404)
+
+    # Always store as .jpg regardless of source format (e.g. photo.png → photo.jpg)
+    thumb_name = Path(filename).stem + ".jpg"
+    thumb = _safe_path(_THUMBNAILS_ROOT_R, directory, thumb_name)
+
+    if not thumb.is_file():
+        try:
+            generate_thumbnail(src, thumb, _THUMB_SIZE)
+        except Exception:
+            app.logger.exception("Failed to generate thumbnail for %s", src)
+            abort(500)
+
+    return send_from_directory(thumb.parent, thumb.name)
 
 
 @app.route("/directory/<path:directory>/", defaults={"page": 1})

@@ -35,7 +35,7 @@
     <article class="grid-item">
         {% if file.lower().endswith(('.jpg', '.jpeg', '.png')) %}
         <a href="{{ url_for('static', filename='media/' + directory + '/' + file) }}">
-            <img src="{{ url_for('static', filename='media/' + directory + '/' + file) }}" alt="{{ file }}" loading="lazy">
+            <img src="{{ url_for('thumbnail', directory=directory, filename=file) }}" alt="{{ file }}" loading="lazy">
         </a>
         {% elif file.lower().endswith('.mp4') %}
         <div class="video-wrapper">

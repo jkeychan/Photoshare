@@ -1,3 +1,9 @@
+# Generated thumbnail cache — do not commit
+static/thumbnails/
+
+# Python venv
+.venv/
+
 # macOS
 .DS_Store
 .DS_Store?
