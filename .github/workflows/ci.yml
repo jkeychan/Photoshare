@@ -7,9 +7,14 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Deny all permissions by default; each job grants only what it needs.
+permissions: {}
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -28,6 +33,7 @@ jobs:
     needs: test
     runs-on: self-hosted
     if: github.ref == 'refs/heads/main'
+    permissions: {}
     steps:
       - name: Deploy
         run: |
