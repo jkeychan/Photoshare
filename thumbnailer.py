@@ -2,6 +2,7 @@
 
 No Flask dependency — safe to import in tests and management scripts.
 """
+
 from pathlib import Path
 
 from PIL import Image
