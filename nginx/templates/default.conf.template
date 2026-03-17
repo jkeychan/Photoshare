@@ -92,6 +92,13 @@ server {
     proxy_send_timeout 300s;
     proxy_read_timeout 300s;
 
+    # robots.txt — disallow all crawlers (private site)
+    location = /robots.txt {
+        return 200 "User-agent: *\nDisallow: /\n";
+        add_header Content-Type text/plain;
+        access_log off;
+    }
+
     # Deny hidden files (.env, .git, etc.)
     location ~ /\. {
         deny all;

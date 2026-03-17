@@ -33,6 +33,7 @@ services:
       - certbot-etc:/etc/letsencrypt
       - certbot-var:/var/lib/letsencrypt
       - webroot:/var/www/html
+      - ./logs/nginx:/var/log/nginx
     depends_on:
       - webapp
     environment:

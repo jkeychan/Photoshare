@@ -22,3 +22,17 @@ jobs:
 
       - name: Run tests
         run: pytest tests/ -v
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Deploy to server
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          install -m 600 /dev/null /tmp/deploy_key
+          printf '%s' "$DEPLOY_SSH_KEY" > /tmp/deploy_key
+          ssh -i /tmp/deploy_key -o StrictHostKeyChecking=no azureuser@aa.photoshare.me \
+            "cd ~/photoshare && git pull origin main && docker compose up --build -d --wait"
