@@ -1,3 +1,5 @@
+name: photoshare
+
 services:
   webapp:
     build: .
