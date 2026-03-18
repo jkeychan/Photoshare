@@ -9,7 +9,7 @@
 
 Full frontend redesign of the Photoshare Flask app used by Appalachian Actors — a theatre company that produces one show per year with 2–3 performance days. The site is password-protected and used by members to browse and download event photos and videos.
 
-Goals: modern clean aesthetic, fast keyboard and mouse navigation, theme system extensible by future developers.
+Goals: modern clean aesthetic, fast keyboard and mouse navigation, theme system extensible by future developers, JS linting and minification pipeline, hardened CI.
 
 ---
 
@@ -57,13 +57,15 @@ The index route is updated to pass a `shows` list of dicts instead of a bare `di
 }
 ```
 
-Photo count is computed by a helper `_count_photos(show_path)` that walks one level of day-subfolders, explicitly excluding any subfolder named `video` (case-insensitive). It counts files with extensions `.jpg`, `.jpeg`, `.png`. The helper receives a path relative to `_MEDIA_ROOT` (the app's existing constant) — it must not hardcode `/mnt/photoshare/media/`.
+Photo count is computed by a helper `_count_photos(show_path)` that walks one level of day-subfolders, explicitly excluding any subfolder named `video` (case-insensitive). It counts files with extensions `.jpg`, `.jpeg`, `.png`. The helper receives a path relative to `_MEDIA_ROOT` (the app's existing constant, derived from `_STATIC_ROOT / "media"`). Note: the disk layout diagram in this spec shows `/mnt/photoshare/media/` for readability, but the actual runtime path is whatever `_MEDIA_ROOT` resolves to — the helper must use `_MEDIA_ROOT`, never a hardcoded path.
 
 ### 3. Video subfolder detection on show page
 
 The directory route always passes `has_video=True/False` in context. It is computed as: `any(d.lower() == 'video' for d in subdirs)`. The template only uses `has_video` when rendering the show-page view (i.e. when `subdirs` is non-empty). Show-level depth can be detected as `directory.count('/') == 0` if needed, but the template distinction already relies on `subdirs` being non-empty.
 
 Videos shown are only the immediate `.mp4` and `.mov` files inside `Video/` — sub-subfolders (e.g. `Video/MOV-Format/`) are ignored. `.mov` files must use `type="video/quicktime"` in the `<source>` tag; `.mp4` files use `type="video/mp4"`.
+
+The route also passes a new context variable `video_files`: a list of static URL strings for each video file inside `Video/`, computed when `has_video=True`. This is required because when the current directory is the show folder, `files` is empty — the template cannot otherwise list `Video/` contents. Example value: `["/static/media/Clue%202025/Video/clip1.mp4", ...]`.
 
 ---
 
@@ -226,21 +228,184 @@ Note: Because aspect ratios are not known server-side without reading EXIF data 
 
 ---
 
+## JS Tooling
+
+### Linting — ESLint
+
+ESLint with a minimal flat config (`eslint.config.js`) targeting the two JS files. No plugins or framework-specific rules — just the standard recommended set for vanilla browser JS.
+
+```js
+// eslint.config.js
+import js from "@eslint/js";
+export default [
+  js.configs.recommended,
+  {
+    files: ["static/js/**/*.js"],
+    languageOptions: { ecmaVersion: 2022, sourceType: "script" },
+    rules: {
+      "no-unused-vars": "error",
+      "no-undef": "error",
+    },
+  },
+];
+```
+
+`sourceType: "script"` (not `"module"`) because the JS files are loaded as plain `<script>` tags, not ES modules.
+
+ESLint is installed as a dev dependency via `package.json` in the repo root. It is not bundled or shipped — only used for linting in CI and locally.
+
+### Minification — esbuild
+
+esbuild minifies `static/js/justified-rows.js` and `static/js/lightbox.js` into `static/js/dist/`. It also minifies `static/css/styles.css` and `static/css/themes.css` into `static/css/dist/`.
+
+```
+static/js/dist/justified-rows.min.js
+static/js/dist/lightbox.min.js
+static/css/dist/styles.min.css
+static/css/dist/themes.min.css
+```
+
+Templates reference the `dist/` paths in production. A `FLASK_ENV` or `DEBUG` flag controls which version is served:
+- `DEBUG=True` (local dev): serve unminified originals — easier to read DevTools
+- `DEBUG=False` (production): serve minified files from `dist/`
+
+esbuild is also installed as a dev dependency. The build command is a single npm script:
+
+```json
+// package.json
+{
+  "scripts": {
+    "lint": "eslint static/js/",
+    "build": "esbuild static/js/justified-rows.js static/js/lightbox.js --minify --outdir=static/js/dist && esbuild static/css/styles.css static/css/themes.css --minify --outdir=static/css/dist"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0",
+    "esbuild": "^0.21.0"
+  }
+}
+```
+
+`static/js/dist/` and `static/css/dist/` are committed to git so the server never needs Node.js installed — the Docker image stays Python-only.
+
+---
+
+## CI Pipeline
+
+### Current state
+
+```
+push → test (pytest) → deploy (self-hosted runner: git pull + docker compose up)
+```
+
+### Updated pipeline
+
+```
+push ──┬── lint-js  (ESLint)          ─┐
+       ├── lint-py  (ruff + mypy)      ├── all pass → build → deploy → smoke-test
+       └── test-py  (pytest)          ─┘
+```
+
+Four jobs run in parallel; `build` and `deploy` are sequential after all pass.
+
+### Job: `lint-js`
+
+Runs on `ubuntu-latest`. Steps:
+1. Checkout
+2. `npm ci`
+3. `npm run lint`
+
+Fails the build on any ESLint error. Runs on all pushes and PRs.
+
+### Job: `lint-py`
+
+Runs on `ubuntu-latest`. Steps:
+1. Checkout
+2. `pip install ruff mypy`
+3. `ruff check app.py config.py`
+4. `mypy app.py` (strict where possible; existing `# type: ignore` comments are acceptable)
+
+### Job: `test-py`
+
+Existing pytest job, unchanged except it now runs in parallel with the lint jobs rather than being the only pre-deploy gate.
+
+### Job: `build`
+
+Runs on `ubuntu-latest` after `lint-js`, `lint-py`, and `test-py` all pass. Steps:
+1. Checkout
+2. `npm ci`
+3. `npm run build`
+4. Commit the updated `static/js/dist/` and `static/css/dist/` files back to `main` using `git push`
+
+**Only runs on `main`** (same condition as deploy). On feature branches, linting and tests run but no build commit is made.
+
+The build commit uses a `[skip ci]` tag to prevent an infinite loop:
+```
+build: minify JS and CSS assets [skip ci]
+```
+
+**Permissions**: this job requires `contents: write` to push the commit. The workflow's global `permissions: {}` must be overridden at the job level:
+```yaml
+build:
+  permissions:
+    contents: write
+```
+All other jobs retain `contents: read` or no permissions, consistent with the existing workflow's least-privilege approach.
+
+### Job: `deploy`
+
+Runs on `self-hosted` after `build` completes. Unchanged from current:
+```bash
+cd ~/photoshare
+git pull origin main
+docker compose up --build -d --wait
+```
+
+### Job: `smoke-test`
+
+Runs on `ubuntu-latest` after `deploy` completes. Verifies the site actually responds:
+
+```bash
+curl -sf --max-time 10 https://aa.photoshare.me/ -o /dev/null
+```
+
+A 200 or 302 (redirect to login) counts as success. Failure (connection refused, 5xx, timeout) fails the workflow and surfaces a real deployment problem that the current pipeline would silently miss.
+
+### nginx config validation
+
+Added as a step in `lint-py` (or its own job):
+```bash
+docker run --rm \
+  -v ${{ github.workspace }}/nginx:/etc/nginx:ro \
+  nginx:alpine nginx -t
+```
+
+Validates the nginx config against the actual nginx image used in production before any code reaches the server. Catches syntax errors in `nginx.conf`, `blockuseragents.rules`, and `blockpaths.rules` on every push.
+
+---
+
 ## Files to Create / Modify
 
 | File | Action | Notes |
 |------|--------|-------|
-| `app.py` | Modify | Increase `_PAGE_SIZE` to 10000; add `_count_photos()` helper; update index route to pass `shows` list; add `has_video` to directory route context |
+| `app.py` | Modify | Increase `_PAGE_SIZE` to 10000; add `_count_photos()` helper; update index route to pass `shows` list; add `has_video` and `video_files` to directory route context; serve minified assets when `DEBUG=False` |
 | `static/css/styles.css` | Rewrite | Layout, nav, cards, gallery grid, lightbox overlay, theme-aware component styles |
 | `static/css/themes.css` | Create | CSS variable definitions for all 4 themes |
+| `static/css/dist/styles.min.css` | Generated | Committed build artifact — do not edit manually |
+| `static/css/dist/themes.min.css` | Generated | Committed build artifact — do not edit manually |
 | `static/js/justified-rows.js` | Create | Justified-row gallery layout engine |
 | `static/js/lightbox.js` | Create | Photo lightbox with keyboard/touch nav and download |
-| `templates/base.html` | Rewrite | New nav bar, breadcrumb, theme switcher dropdown, JS/CSS includes, FOUC script |
+| `static/js/dist/justified-rows.min.js` | Generated | Committed build artifact — do not edit manually |
+| `static/js/dist/lightbox.min.js` | Generated | Committed build artifact — do not edit manually |
+| `templates/base.html` | Rewrite | New nav bar, breadcrumb, theme switcher dropdown, JS/CSS includes (minified in prod), FOUC script |
 | `templates/index.html` | Rewrite | Show card grid |
 | `templates/directory.html` | Rewrite | Show page (day cards + videos section) and gallery page (justified rows) |
 | `templates/login.html` | Rewrite | Themed login form |
 | `templates/error.html` | Update | Match new aesthetic |
 | `templates/downloads.html` | Update | Match new aesthetic |
+| `package.json` | Create | ESLint + esbuild dev dependencies and npm scripts |
+| `eslint.config.js` | Create | Minimal flat ESLint config for vanilla browser JS |
+| `.github/workflows/ci.yml` | Rewrite | Add lint-js, lint-py, build, smoke-test, nginx-validate jobs |
 
 ---
 
@@ -283,3 +448,8 @@ The `has_video` context variable (new) tells the show page whether to render the
 - Theme switcher in nav applies theme instantly with no page reload
 - Adding a new theme requires only CSS + one HTML button — no Python
 - Site works correctly at 320px minimum width
+- `npm run lint` passes with zero errors on the two JS files
+- `npm run build` produces minified assets; production serves minified versions
+- CI lints JS, lints Python (ruff + mypy), runs tests, builds assets, deploys, and smoke-tests — all in one pipeline
+- nginx config is validated in CI before every deploy
+- A deployment failure causes the smoke-test job to fail visibly in GitHub Actions
