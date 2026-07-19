@@ -41,6 +41,7 @@ photoshare/
 ├── requirements.txt        # Direct Python dependencies only
 ├── Dockerfile              # Multi-stage build (builder + slim runtime)
 ├── docker-compose.yml      # webapp + nginx + certbot
+├── setup.sh                # One-command first-time setup
 ├── .env.example            # Environment variable template
 ├── nginx/
 │   ├── nginx.conf          # Rate limits, connection zones
@@ -56,7 +57,21 @@ photoshare/
 
 ## Setup
 
-### 1. Clone and configure
+### Quick start
+
+```bash
+git clone https://github.com/jkeychan/Photoshare.git
+cd Photoshare
+./setup.sh
+```
+
+`setup.sh` asks for your domain, email, and a login password, then generates secrets, obtains the SSL certificate, and brings everything up. Requires Docker (with the Compose plugin), Python 3, and the `bcrypt` pip package on the host.
+
+For more control, or to understand what's happening under the hood, follow the manual steps below instead.
+
+### Manual setup
+
+#### 1. Clone and configure
 
 ```bash
 git clone https://github.com/jkeychan/Photoshare.git
@@ -83,7 +98,7 @@ python3 -c "import secrets; print(secrets.token_hex(32))"  # run twice for FKEY 
 python3 -c "import bcrypt; print(bcrypt.hashpw(b'yourpassword', bcrypt.gensalt()).decode())"
 ```
 
-### 2. Place your media
+#### 2. Place your media
 
 ```
 /mnt/photoshare/media/
@@ -96,7 +111,7 @@ python3 -c "import bcrypt; print(bcrypt.hashpw(b'yourpassword', bcrypt.gensalt()
 
 `docker-compose.yml` mounts `/mnt/photoshare/media` into the containers read-only.
 
-### 3. Obtain SSL certificate
+#### 3. Obtain SSL certificate
 
 Run certbot once to issue the initial certificate (nginx must be reachable on port 80):
 
@@ -109,7 +124,7 @@ docker compose run --rm certbot certonly \
 
 Switch `STAGING=0` in `.env` when ready for a production certificate.
 
-### 4. Start
+#### 4. Start
 
 ```bash
 docker compose up --build -d
