@@ -47,4 +47,8 @@ logs/
 
 # Backups
 *.backup
-*.bak 
+*.bak
+
+# Agent-generated planning artifacts — internal working notes, not project docs
+docs/superpowers/
+.claude/ 
