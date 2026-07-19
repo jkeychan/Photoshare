@@ -1,6 +1,14 @@
 # Photoshare
 
-Self-hosted, password-protected photo and video gallery. Serves images and videos from a directory tree via a Flask app behind nginx, with automatic HTTPS via Let's Encrypt.
+[![CI](https://github.com/jkeychan/Photoshare/actions/workflows/ci.yml/badge.svg)](https://github.com/jkeychan/Photoshare/actions/workflows/ci.yml)
+[![Weekly dependency rebuild](https://github.com/jkeychan/Photoshare/actions/workflows/weekly-rebuild.yml/badge.svg)](https://github.com/jkeychan/Photoshare/actions/workflows/weekly-rebuild.yml)
+[![CodeQL](https://img.shields.io/badge/CodeQL-enabled-brightgreen)](https://github.com/jkeychan/Photoshare/security/code-scanning)
+![License](https://img.shields.io/badge/license-MIT-blue)
+![Python](https://img.shields.io/badge/python-3.14-blue)
+![Flask](https://img.shields.io/badge/flask-3-black)
+![Docker Compose](https://img.shields.io/badge/docker-compose-2496ED)
+
+A lightweight, self-hosted photo and video gallery for sharing your own media privately — no third-party cloud storage, no data leaving your server. Single-password auth, automatic thumbnailing, and HTTPS out of the box via Flask, nginx, and Let's Encrypt, all wired together with Docker Compose. Built for home labs, NAS boxes, and personal VPS deployments where you want full control over where your photos and videos actually live.
 
 ## Stack
 
