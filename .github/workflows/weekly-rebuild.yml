@@ -1,0 +1,26 @@
+name: Weekly dependency rebuild
+
+# The app image's pip layer is cached by requirements.txt's contents, so a
+# normal push-triggered build reuses whatever versions were resolved at the
+# last cache invalidation - it won't pick up newer patched releases of
+# floor-pinned deps (e.g. Pillow) on its own. This rebuilds from scratch on
+# a schedule so patched versions get pulled in even when nothing changed
+# in the repo.
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Monday 06:00 UTC
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  rebuild:
+    runs-on: self-hosted
+    permissions: {}
+    steps:
+      - name: Rebuild and redeploy
+        run: |
+          cd ~/photoshare
+          git pull origin main
+          docker compose build --no-cache
+          docker compose up -d --wait
