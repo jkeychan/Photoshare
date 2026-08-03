@@ -1,7 +1,7 @@
 # Direct dependencies only — transitive deps (Werkzeug, Jinja2, etc.) are
 # managed by Flask and resolved automatically by pip.
 Flask>=3.1.3
-gunicorn>=23.0.0
+gunicorn>=26.0.0
 Flask-Bcrypt>=1.0.1
 Flask-WTF>=1.2.2
 WTForms>=3.2.1
