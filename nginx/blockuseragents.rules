@@ -14,6 +14,13 @@ map $http_user_agent $blockedagent {
     ~*axios         1;
     ~*wget          1;
     ~*curl          1;
+    ~*java/          1;  # generic Java HTTP UA (many scanners/exploit PoCs)
+    ~*apache-httpclient 1;
+    ~*okhttp         1;
+    ~*scrapy         1;
+    ~*postmanruntime 1;
+    ~*insomnia       1;
+    ~*node-fetch     1;
 
     # Security / pentest tools (seen in logs or common in the wild)
     ~*ZAP           1;  # OWASP ZAP
@@ -35,6 +42,14 @@ map $http_user_agent $blockedagent {
     ~*burp          1;
     ~*pangolin      1;
     ~*paros         1;
+    ~*ffuf          1;  # modern dirbuster replacement
+    ~*gobuster      1;
+    ~*feroxbuster   1;
+    ~*whatweb       1;
+    ~*httpx         1;  # ProjectDiscovery recon probe
+    ~*arachni       1;
+    ~*zmap          1;  # internet-wide scanner, cousin of masscan/zgrab
+    ~*headlesschrome 1;  # headless browser automation (Puppeteer/Playwright default UA)
 
     # Recon / internet-scanning services
     ~*CensysInspect  1;
@@ -53,4 +68,10 @@ map $http_user_agent $blockedagent {
     # UA strings seen in exploit scans against this server
     ~*Custom-AsyncHttpClient 1;  # PHP framework exploit sweep
     ~*QIHU           1;          # 360 Security (Chinese scanner)
+
+    # AI training crawlers (no bot/crawler/spider substring, so need explicit rules)
+    ~*anthropic-ai       1;
+    ~*chatgpt            1;  # covers ChatGPT-User and GPTBot's non-"bot" variants
+    ~*meta-externalagent 1;
+    ~*meta-externalfetcher 1;
 }
