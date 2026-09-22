@@ -24,7 +24,6 @@ ENV PATH="/opt/venv/bin:$PATH"
 # Copy application source (no bind-mount override in production)
 COPY app.py config.py thumbnailer.py ./
 COPY templates/ templates/
-COPY static/ static/
 
 RUN useradd -m appuser && chown -R appuser:appuser /app
 USER appuser

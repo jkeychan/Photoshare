@@ -1,9 +1,10 @@
 import logging
 import os
+from collections.abc import Callable
 from functools import lru_cache, wraps
 from pathlib import Path
-from urllib.parse import unquote
 
+import bcrypt
 from config import Config
 from flask import (
     Flask,
@@ -15,7 +16,6 @@ from flask import (
     session,
     url_for,
 )
-from flask_bcrypt import Bcrypt
 from flask_wtf import FlaskForm
 from thumbnailer import generate_thumbnail
 from wtforms import PasswordField
@@ -25,21 +25,14 @@ _static_folder = os.environ.get("STATIC_FOLDER", "/mnt/web/photoshare/static")
 app = Flask(__name__, static_url_path="/static", static_folder=_static_folder)
 app.config.from_object(Config)
 app.logger.setLevel(logging.DEBUG)
-bcrypt = Bcrypt(app)
 
-_STATIC_ROOT = Path(app.static_folder)
+# Resolved once at startup so _safe_path doesn't re-resolve the base per request.
+_STATIC_ROOT = Path(app.static_folder).resolve()
 _MEDIA_ROOT = _STATIC_ROOT / "media"
 _DOWNLOADS_ROOT = _STATIC_ROOT / "downloads"
-
-# Resolved once at startup — passed to _safe_path so Path.resolve() is not
-# re-issued on every request (avoids a realpath(3) syscall per call).
-_MEDIA_ROOT_R = _MEDIA_ROOT.resolve()
-_DOWNLOADS_ROOT_R = _DOWNLOADS_ROOT.resolve()
 _THUMBNAILS_ROOT = _STATIC_ROOT / "thumbnails"
-_THUMBNAILS_ROOT_R = _THUMBNAILS_ROOT.resolve()
 
 _PAGE_SIZE = 10
-_THUMB_SIZE = (400, 400)
 
 
 # ------------------- HELPERS --------------------
@@ -49,8 +42,7 @@ def _safe_path(base_r: Path, *parts: str) -> Path:
     """Resolve a joined path and abort 400 if it escapes *base_r* (path traversal guard).
 
     *base_r* must already be a canonical absolute path; pass one of the
-    module-level ``_*_ROOT_R`` constants so ``Path.resolve()`` is not
-    re-issued on every request.
+    module-level ``_*_ROOT`` constants.
     """
     resolved = base_r.joinpath(*parts).resolve()
     if not resolved.is_relative_to(base_r):
@@ -58,21 +50,10 @@ def _safe_path(base_r: Path, *parts: str) -> Path:
     return resolved
 
 
-def _list_dir(
-    path: Path, *, dirs_only: bool = False, files_only: bool = False
-) -> list[str]:
-    """Return a sorted list of entry names in *path*.
-
-    Returns an empty list if the directory does not exist.  Pass *dirs_only*
-    or *files_only* to filter by entry type.
-    """
+def _list_dir(path: Path, keep: Callable[[Path], bool]) -> list[str]:
+    """Return sorted names of entries in *path* matching *keep*; [] if *path* is missing."""
     try:
-        entries = path.iterdir()
-        if dirs_only:
-            return sorted(e.name for e in entries if e.is_dir())
-        if files_only:
-            return sorted(e.name for e in entries if e.is_file())
-        return sorted(e.name for e in entries)
+        return sorted(e.name for e in path.iterdir() if keep(e))
     except FileNotFoundError:
         return []
 
@@ -120,24 +101,19 @@ class LoginForm(FlaskForm):
 # ------------------- ROUTES --------------------
 
 
-@app.route("/favicon.ico")
-def favicon():
-    return send_from_directory(
-        _STATIC_ROOT, "favicon.ico", mimetype="image/vnd.microsoft.icon"
-    )
-
-
 @app.route("/", methods=["GET", "POST"])
 def index():
     if session.get("logged_in"):
         return render_template(
             "index.html",
-            directories=_list_dir(_MEDIA_ROOT, dirs_only=True),
+            directories=_list_dir(_MEDIA_ROOT, Path.is_dir),
         )
 
     form = LoginForm()
     if form.validate_on_submit():
-        if bcrypt.check_password_hash(app.config["PASSWORD_HASH"], form.password.data):
+        if bcrypt.checkpw(
+            form.password.data.encode(), app.config["PASSWORD_HASH"].encode()
+        ):
             session["logged_in"] = True
             session.permanent = True
             return redirect(url_for("index"))
@@ -156,7 +132,7 @@ def logout():
 def downloads():
     return render_template(
         "downloads.html",
-        files=_list_dir(_DOWNLOADS_ROOT, files_only=True),
+        files=_list_dir(_DOWNLOADS_ROOT, Path.is_file),
     )
 
 
@@ -169,20 +145,17 @@ def thumbnail(directory: str, filename: str):
     static/media/ structure. Generated once on first request, served from
     disk thereafter.
     """
-    directory = unquote(directory)
-    filename = unquote(filename)
-
-    src = _safe_path(_MEDIA_ROOT_R, directory, filename)
+    src = _safe_path(_MEDIA_ROOT, directory, filename)
     if not src.is_file():
         abort(404)
 
     # Always store as .jpg regardless of source format (e.g. photo.png → photo.jpg)
     thumb_name = Path(filename).stem + ".jpg"
-    thumb = _safe_path(_THUMBNAILS_ROOT_R, directory, thumb_name)
+    thumb = _safe_path(_THUMBNAILS_ROOT, directory, thumb_name)
 
     if not thumb.is_file():
         try:
-            generate_thumbnail(src, thumb, _THUMB_SIZE)
+            generate_thumbnail(src, thumb)
         except Exception:
             app.logger.exception("Failed to generate thumbnail for %s", src)
             abort(500)
@@ -194,8 +167,7 @@ def thumbnail(directory: str, filename: str):
 @app.route("/directory/<path:directory>/<int:page>/")
 @login_required
 def show_directory(directory: str, page: int = 1):
-    directory = unquote(directory)
-    dir_path = _safe_path(_MEDIA_ROOT_R, directory)
+    dir_path = _safe_path(_MEDIA_ROOT, directory)
     if not dir_path.is_dir():
         abort(404)
     mtime = dir_path.stat().st_mtime
@@ -214,8 +186,7 @@ def show_directory(directory: str, page: int = 1):
 @app.route("/download/<filename>/")
 @login_required
 def download_file(filename: str):
-    filename = unquote(filename)
-    file_path = _safe_path(_DOWNLOADS_ROOT_R, filename)
+    file_path = _safe_path(_DOWNLOADS_ROOT, filename)
     if not file_path.is_file():
         abort(404)
     return send_from_directory(_DOWNLOADS_ROOT, filename, as_attachment=True)
@@ -232,16 +203,6 @@ def bad_request(e):
 @app.errorhandler(404)
 def not_found(e):
     return render_template("error.html", error_message="Page not found."), 404
-
-
-@app.errorhandler(429)
-def ratelimit_handler(e):
-    return (
-        render_template(
-            "error.html", error_message="Too many requests. Please slow down."
-        ),
-        429,
-    )
 
 
 # ------------------- MAIN --------------------

@@ -24,11 +24,11 @@ A lightweight, self-hosted photo and video gallery for sharing your own media pr
 
 - **Single-password auth** — bcrypt-hashed, session-based with CSRF protection
 - **Folder-based gallery** — media organised into albums under `/mnt/photoshare/media/`
-- **Thumbnails** — JPEG thumbnails generated on demand and cached; nginx serves them directly on subsequent requests
+- **Thumbnails** — JPEG thumbnails generated on demand and cached to disk
 - **Video support** — MP4 and MOV playback inline, with download links
 - **Downloads section** — serve arbitrary files from a separate downloads directory
 - **Pagination** — 10 items per page, cached across page flips (keyed on directory mtime)
-- **nginx serving** — media and thumbnails served directly by nginx, not Flask
+- **nginx serving** — media served directly by nginx, not Flask
 - **Security** — rate limiting, bot blocking, HSTS, CSP, X-Frame-Options, no hidden-file access, HTTPS-only
 
 ## Project Structure

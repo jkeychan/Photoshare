@@ -37,21 +37,11 @@
         <a href="{{ url_for('static', filename='media/' + directory + '/' + file) }}">
             <img src="{{ url_for('thumbnail', directory=directory, filename=file) }}" alt="{{ file }}" loading="lazy">
         </a>
-        {% elif file.lower().endswith('.mp4') %}
+        {% elif file.lower().endswith(('.mp4', '.mov')) %}
         <div class="video-wrapper">
             <a href="{{ url_for('static', filename='media/' + directory + '/' + file) }}">
                 <video width="320" height="240" controls loading="lazy">
-                    <source src="{{ url_for('static', filename='media/' + directory + '/' + file) }}" type="video/mp4">
-                    Your browser does not support the video tag.
-                </video>
-            </a>
-            <a class="video-download-link" href="{{ url_for('static', filename='media/' + directory + '/' + file) }}" download="{{ file }}">{{ file[:-4] }}</a>
-        </div>
-        {% elif file.lower().endswith('.mov') %}
-        <div class="video-wrapper">
-            <a href="{{ url_for('static', filename='media/' + directory + '/' + file) }}">
-                <video width="320" height="240" controls loading="lazy">
-                    <source src="{{ url_for('static', filename='media/' + directory + '/' + file) }}" type="video/quicktime">
+                    <source src="{{ url_for('static', filename='media/' + directory + '/' + file) }}" type="{{ 'video/mp4' if file.lower().endswith('.mp4') else 'video/quicktime' }}">
                     Your browser does not support the video tag.
                 </video>
             </a>
