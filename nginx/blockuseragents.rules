@@ -1,6 +1,12 @@
 map $http_user_agent $blockedagent {
     default         0;
 
+    # Allow-list — regexes are checked in file order and the first match wins,
+    # so these must stay above the generic "bot" rule.
+    ~*\bcubot\b          0;  # Cubot Android phones ("Cubot P40")
+    ~*facebookexternalhit 0;  # Facebook link previews (UA also contains "Facebot", "Twitterbot")
+    ~*letsencrypt        0;  # ACME validation hits the port-80 server block; never block it
+
     # Generic scanner/automation keywords
     ~*bot           1;
     ~*crawler       1;
@@ -43,6 +49,7 @@ map $http_user_agent $blockedagent {
     ~*pangolin      1;
     ~*paros         1;
     ~*ffuf          1;  # modern dirbuster replacement
+    "~*Fuzz Faster U Fool" 1;  # ffuf's default UA (doesn't contain "ffuf")
     ~*gobuster      1;
     ~*feroxbuster   1;
     ~*whatweb       1;
@@ -64,14 +71,70 @@ map $http_user_agent $blockedagent {
     ~*LeakIX         1;
     ~*mrtscan        1;  # Azure/Microsoft MRT scanner
     ~*paloaltonetworks 1;  # Palo Alto Cortex Xpanse scanner
+    ~*keydrop        1;  # Keydrop.io / onlyscans.com
+    ~*getodin        1;  # Odin internet scanner (docs.getodin.com)
 
     # UA strings seen in exploit scans against this server
     ~*Custom-AsyncHttpClient 1;  # PHP framework exploit sweep
     ~*QIHU           1;          # 360 Security (Chinese scanner)
+    ~*libredtail     1;          # libredtail-http exploit sweep
+    "~*\(ZZ;"        1;          # fake "(ZZ; Linux ...)" browser UA used by a scanner
+    "~*^hello,? world" 1;        # "Hello, World" / "Hello World" probes
+    ~*r00ts3c        1;
+    "~*cve-\d{4}-"   1;          # CVE PoC / detection tools (e.g. cve-2026-87902-poc)
+    "~*^0day$"       1;
+    ~*fasthttp       1;          # Go HTTP lib, only seen from scanners here
+    ~*winrm          1;          # Microsoft WinRM Client
+    ~*cffinder       1;          # CFFinderSwiftBackend
+
+    # Probes for VPN clients this server doesn't run
+    ~*globalprotect  1;
+    ~*anyconnect     1;
+    ~*sslvpn-client  1;
+    ~*what-vpn       1;
+
+    # Recon / research scanners found in 2026 access logs
+    ~*beyondmemory   1;
+    ~*cyberconvoy    1;
+    ~*visionheight   1;
+    ~*crusader       1;  # Crusader/1.0, crusader-worker/1.0
+    ~*infrawatch     1;
+    ~*unifiedpaths   1;
+    ~*pathscan       1;
+    ~*probethenet    1;
+    ~*securityresearch 1;
+    ~*reverse-proxies-measurements 1;  # softsec.ruhr-uni-bochum.de
+    ~*l9tcpid        1;  # LeakIX
+    ~*forestengine   1;
+    ~*flowiq         1;
+    ~*silovik        1;
+    ~*host-probe     1;
+    ~*cms-checker    1;
+    ~*rawgrab        1;
+    ~*tttx\.net      1;
+    ~*rootevidence   1;
+    ~*nextscan       1;
+    ~*openbash       1;
+    ~*netcraft       1;
+    ~*assetnote      1;
+    ~*aiscan         1;
+    ~*vuln-audit     1;
+    ~*netscan-research 1;
+    ~*xmco           1;
 
     # AI training crawlers (no bot/crawler/spider substring, so need explicit rules)
     ~*anthropic-ai       1;
     ~*chatgpt            1;  # covers ChatGPT-User and GPTBot's non-"bot" variants
     ~*meta-externalagent 1;
     ~*meta-externalfetcher 1;
+    ~*cohere-ai          1;
+    ~*omgili             1;  # Webz.io crawler
+    ~*claude-user        1;
+    ~*claude-web         1;
+    ~*perplexity-user    1;
+    ~*mistralai-user     1;
+    ~*xai-grok           1;
+    ~*hunyuan            1;  # Tencent
+    ~*googleother        1;
+    ~*wordpress          1;  # pingback/trackback fetches
 }
