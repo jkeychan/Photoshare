@@ -1,5 +1,5 @@
 # Build stage: install dependencies into an isolated venv
-FROM python:3.14-slim AS builder
+FROM python:3.15-slim AS builder
 
 WORKDIR /app
 
@@ -14,7 +14,7 @@ RUN python -m venv /opt/venv \
     && pip install --no-cache-dir -r requirements.txt
 
 # Production stage: lean image with venv + app source only
-FROM python:3.14-slim
+FROM python:3.15-slim
 
 WORKDIR /app
 
